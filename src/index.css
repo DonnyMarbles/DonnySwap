@@ -1,0 +1,26 @@
+/* src/index.css */
+
+body {
+  background-color: #121212;
+  color: #FFFFFF;
+  font-family: 'Arial', sans-serif;
+}
+
+a {
+  color: #BB86FC;
+}
+
+button {
+  background-color: #BB86FC;
+  color: #FFFFFF;
+  border: none;
+  padding: 10px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+button:hover {
+  background-color: #3700B3;
+}
+
+/* Add more global styles as needed */
