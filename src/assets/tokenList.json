@@ -1,0 +1,20 @@
+{
+    "0xdd11f4e48ce3a2b9043b2b0758ce704d3fd191dc": {
+        "symbol": "WKREST",
+        "address": "0xdd11f4e48ce3a2b9043b2b0758ce704d3fd191dc",
+        "decimals": 18,
+        "logo": "src/assets/WKREST_logo.png"
+    },
+    "0xf5321b84aae2990fec72fd57af1b4a99b01eb928": {
+        "symbol": "MRBL",
+        "address": "0xf5321b84aae2990fec72fd57af1b4a99b01eb928",
+        "decimals": 18,
+        "logo": "src/assets/MRBL_logo.png"
+    },
+    "KRST": {
+        "symbol": "KRST",
+        "decimals": 18,
+        "address": "KRST",
+        "logo": "src/assets/WKREST_logo.png"
+    }
+}
