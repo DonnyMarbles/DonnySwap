@@ -30,6 +30,9 @@ const Home = () => (
 
       Recommended H160 (EVM) Wallet: 🦊 <a href="https://metamask.io/">Metamask</a> <br/>
       Recommended SS58 (Substrate) Wallet: <a href="https://talisman.xyz/">Talisman</a><br/><br/>
+    
+      <h3>For Firefox users; if multiple Web3 wallets are installed (Phantom x Metamask) disable 
+        all but one and reload the page</h3>
     </ol>
   </div>
     </HomeContainer>

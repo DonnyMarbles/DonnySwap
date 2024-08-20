@@ -1,6 +1,9 @@
 Welcome to DonnySwap v0.1.0
 Current features
 
+**FIREFOX USERS**
+If using multiple Web3 Wallets such as Phantom and Metamask, disable one and reload the page.
+
     🔒Create LPs
     Create ERC-20 - ERC-20 LPs
     Create Native KRST - ERC-20 LPs
