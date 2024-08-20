@@ -18,11 +18,11 @@ const AddLiquidity = () => {
   const { UniswapV2Router02ABI, UniswapV2PairABI, UniswapV2FactoryABI, ERC20ABI, WrappedKRESTABI } = useContext(ABIContext);
   const [tokenA, setTokenIn] = useState('');
   const [tokenB, setTokenOut] = useState('');
-  const [amountA, setAmountA] = useState(0);
-  const [amountB, setAmountB] = useState(0);
-  const [lpBalance, setLpBalance] = useState(0); 
-  const [balanceA, setBalanceA] = useState(0);
-  const [balanceB, setBalanceB] = useState(0);
+  const [amountA, setAmountA] = useState('0.');
+  const [amountB, setAmountB] = useState('0.');
+  const [lpBalance, setLpBalance] = useState('0.'); 
+  const [balanceA, setBalanceA] = useState('0.');
+  const [balanceB, setBalanceB] = useState('0.');
   const [noLiquidity, setNoLiquidity] = useState(false);
   const [allowanceA, setAllowanceA] = useState(ethers.constants.Zero);
   const [allowanceB, setAllowanceB] = useState(ethers.constants.Zero);
@@ -287,7 +287,7 @@ const AddLiquidity = () => {
         setAmountB(newAmountA);
       }
     } else {
-      setAmountA(0);
+      setAmountA('0.');
     }
   };
 
@@ -303,7 +303,7 @@ const AddLiquidity = () => {
         setAmountA(newAmountB);
       }
     } else {
-      setAmountB(0);
+      setAmountB('0.');
     }
   };
   const handleTokenInChange = async (e) => {
@@ -358,11 +358,11 @@ const AddLiquidity = () => {
         )}
         <input
           type="text" 
-          inputMode="numeric"
+          inputMode="decimal"
           placeholder="Amount A"
           value={amountA}
           onChange={(e) => handleAmountAChange(e.target.value)}
-          min={0}
+          min="0.0"
           max={balanceA}
         />
       </AddLiquidityInputContainer>
@@ -381,11 +381,11 @@ const AddLiquidity = () => {
         )}
         <input
           type="text" 
-          inputMode="numeric"
+          inputMode="decimal"
           placeholder="Amount B"
           value={amountB}
           onChange={(e) => handleAmountBChange(e.target.value)}
-          min={0}
+          min="0.0"
           max={balanceB}
         />
       </AddLiquidityInputContainer>

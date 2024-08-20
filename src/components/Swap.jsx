@@ -20,10 +20,10 @@ const Swap = () => {
   const { UniswapV2Router02ABI, UniswapV2PairABI, UniswapV2FactoryABI, ERC20ABI, WrappedKRESTABI } = useContext(ABIContext);
   const [tokenA, setTokenIn] = useState('');
   const [tokenB, setTokenOut] = useState('');
-  const [amountA, setAmountA] = useState(0);
-  const [amountB, setAmountB] = useState(0);
-  const [balanceA, setBalanceA] = useState(0);
-  const [balanceB, setBalanceB] = useState(0);
+  const [amountA, setAmountA] = useState('0.');
+  const [amountB, setAmountB] = useState('0.');
+  const [balanceA, setBalanceA] = useState('0.');
+  const [balanceB, setBalanceB] = useState('0.');
   const [slippage, setSlippage] = useState(0.5);
   const [noLiquidity, setNoLiquidity] = useState(false);
   const [allowanceA, setAllowanceA] = useState(ethers.constants.Zero);
@@ -99,7 +99,7 @@ const Swap = () => {
       setBalance(formattedBalance); // Set the balance in the state
     } catch (error) {
       console.error('Error fetching balance:', error);
-      setBalance('0'); // Fallback to 0 in case of an error
+      setBalance('0.'); // Fallback to 0 in case of an error
     }
   };
   const getTokenAddress = (tokenSymbol) => {
@@ -269,7 +269,7 @@ const Swap = () => {
         setAmountB(newAmountA);
       }
     } else {
-      setAmountA(0);
+      setAmountA('0.');
     }
   };
 
@@ -285,7 +285,7 @@ const Swap = () => {
         setAmountA(newAmountB);
       }
     } else {
-      setAmountB(0);
+      setAmountB('0.');
     }
   };
   
@@ -314,11 +314,11 @@ const Swap = () => {
         )}
         <input
           type="text" 
-          inputMode="numeric"
+          inputMode="decimal"
           placeholder="Amount A"
           value={amountA}
           onChange={(e) => handleAmountAChange(e.target.value)}
-          min={0}
+          min="0.0"
           max={balanceA}
         />
       </SwapInputContainer>
@@ -337,11 +337,11 @@ const Swap = () => {
         )}
         <input
           type="text" 
-          inputMode="numeric"
+          inputMode="decimal"
           placeholder="Amount B"
           value={amountB}
           onChange={(e) => handleAmountBChange(e.target.value)}
-          min={0.00}
+          min="0.0"
           max={balanceB}
         />
       </SwapInputContainer>
@@ -423,7 +423,7 @@ const Swap = () => {
       )}
       <SlippageInputContainer>
         <label htmlFor="slippage">Slippage Tolerance (%)</label>
-        <input type="number" id="slippage" value={slippage} onChange={(e) => { setSlippage(e.target.value) }} step="0.1" min="0" max="40" />
+        <input type="decimal" id="slippage" value={slippage} onChange={(e) => { setSlippage(e.target.value) }} step="0.1" min="0." max="40" />
       </SlippageInputContainer>
       {noLiquidity && <NoLiquidityMessage>No Liquidity Pool Found</NoLiquidityMessage>}
     </SwapContainer>

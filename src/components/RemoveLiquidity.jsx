@@ -18,11 +18,11 @@ const RemoveLiquidity = () => {
   const { UniswapV2Router02ABI, UniswapV2PairABI, UniswapV2FactoryABI, ERC20ABI, WrappedKRESTABI } = useContext(ABIContext);
   const [tokenA, setTokenIn] = useState('');
   const [tokenB, setTokenOut] = useState('');
-  const [amountA, setAmountA] = useState(0);
-  const [amountB, setAmountB] = useState(0);
-  const [lpBalance, setLpBalance] = useState(0);
-  const [balanceA, setBalanceA] = useState(0);
-  const [balanceB, setBalanceB] = useState(0);
+  const [amountA, setAmountA] = useState('0.');
+  const [amountB, setAmountB] = useState('0.');
+  const [lpBalance, setLpBalance] = useState('0.');
+  const [balanceA, setBalanceA] = useState('0.');
+  const [balanceB, setBalanceB] = useState('0.');
   const [noLiquidity, setNoLiquidity] = useState(false);
   const [allowanceA, setAllowanceA] = useState(ethers.constants.Zero);
   const [allowanceB, setAllowanceB] = useState(ethers.constants.Zero);
@@ -277,7 +277,7 @@ const RemoveLiquidity = () => {
         setAmountB(newAmountB);
       }
     } else {
-      setAmountA(0); // If the input is not a valid number, set the amount to 0
+      setAmountA('0.'); // If the input is not a valid number, set the amount to 0
     }
   };
   
@@ -347,13 +347,13 @@ const RemoveLiquidity = () => {
         <br/>
         <RemoveLiquidityInputContainer>
           LP Tokens to Remove:
-        <input
-          type="text"
-          inputMode="numeric"
-          placeholder="LP Token Amount"
+          <input
+          type="text" 
+          inputMode="decimal"
+          placeholder="Amount A"
           value={amountA}
           onChange={(e) => handleAmountAChange(e.target.value)}
-          min={0}
+          min="0.0"
           max={lpBalance}
         />
       </RemoveLiquidityInputContainer>
