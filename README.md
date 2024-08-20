@@ -2,7 +2,8 @@ Welcome to DonnySwap v0.1.0
 Current features
 
 **FIREFOX USERS**
-If using multiple Web3 Wallets such as Phantom and Metamask, disable one and reload the page.
+If using multiple Web3 Wallets such as Phantom and Metamask, disable one, or update
+'Default Wallet App' setting in Phantom from 'Always Ask' to 'Metamask'
 
     🔒Create LPs
     Create ERC-20 - ERC-20 LPs
