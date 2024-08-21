@@ -1,4 +1,4 @@
-Welcome to DonnySwap v0.1.21
+Welcome to DonnySwap v0.1.22
 
 https://donnyswap.betterfuturelabs.xyz/
 
