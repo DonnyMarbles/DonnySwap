@@ -17,7 +17,7 @@ export const StyledTable = styled.table`
 
   th, td {
     padding: 12px 15px;
-    text-align: left;
+    text-align: flex;
     border-bottom: 1px solid #ddd;
   }
 
@@ -42,6 +42,7 @@ export const LogoCell = styled.td`
   align-items: center;
 
   img {
+    margin: 20px 0;
     margin-right: 10px;
   }
 `;

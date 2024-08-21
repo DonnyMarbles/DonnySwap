@@ -120,7 +120,7 @@ const TokenPairs = () => {
                 <tbody>
                     {pairs.map((pair, index) => (
                         <tr key={index}>
-                            <td>
+                            <LogoCell>
                                 <a
                                     href={`https://krest.subscan.io/account/${pair.tokenAAddress}`}
                                     target="_blank"
@@ -135,7 +135,7 @@ const TokenPairs = () => {
                                 >
                                     <img src={pair.tokenBLogo} alt={pair.tokenBSymbol} />
                                 </a>
-                            </td>
+                            </LogoCell>
                             <td>
                                 <a
                                     href={`https://krest.subscan.io/account/${pair.pairAddress}`}
@@ -145,9 +145,31 @@ const TokenPairs = () => {
                                     {pair.tokenASymbol}/{pair.tokenBSymbol}
                                 </a>
                             </td>
-                            <td>{ethers.utils.formatUnits(pair.reserves[0], 18)} / {ethers.utils.formatUnits(pair.reserves[1], 18)}</td>
-                            <td>{ethers.utils.formatUnits(pair.totalSupply, 18)}</td>
-                            <td>{ethers.utils.formatUnits(pair.userBalance, 18)}</td>
+                            <td>
+                                {Number(ethers.utils.formatUnits(pair.reserves[0], 18)).toFixed(6)} <a
+                                    href={`https://krest.subscan.io/account/${pair.tokenAAddress}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                > {pair.tokenASymbol} </a> / {Number(ethers.utils.formatUnits(pair.reserves[1], 18)).toFixed(6)} <a
+                                    href={`https://krest.subscan.io/account/${pair.tokenBAddress}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                > {pair.tokenBSymbol} </a>
+                            </td>
+                            <td>{Number(ethers.utils.formatUnits(pair.totalSupply, 18)).toFixed(6)} <a
+                                href={`https://krest.subscan.io/account/${pair.pairAddress}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                            >
+                                {pair.tokenASymbol}/{pair.tokenBSymbol}
+                            </a></td>
+                            <td>{Number(ethers.utils.formatUnits(pair.userBalance, 18)).toFixed(6)} <a
+                                    href={`https://krest.subscan.io/account/${pair.pairAddress}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                >
+                                    {pair.tokenASymbol}/{pair.tokenBSymbol}
+                                </a></td>
                             <PercentageCell percentage={pair.userShare}>
                                 {pair.userShare.toFixed(2)}%
                             </PercentageCell>
