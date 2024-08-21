@@ -6,21 +6,30 @@ If using multiple Web3 Wallets such as Phantom and Metamask, disable one, or upd
 'Default Wallet App' setting in Phantom from 'Always Ask' to 'Metamask'
 
     🔁Swap Tokens
-    Swap ERC-20 - ERC-20 LPs
-    Swap Native KRST - ERC-20 LPs
-    Wrap / Unwrap KRST - WKREST
+        Swap ERC-20 - ERC-20 LPs
+        Swap Native KRST - ERC-20 LPs
+        Wrap / Unwrap KRST - WKREST
     🔒Create & 🔓Remove LPs
-    Create ERC-20 - ERC-20 LPs
-    Create Native KRST - ERC-20 LPs
-    Remove ERC-20 - ERC-20 LPs
-    Remove Native KRST - ERC-20 LPs
+        Create ERC-20 - ERC-20 LPs
+        Create Native KRST - ERC-20 LPs
+        Remove ERC-20 - ERC-20 LPs
+        Remove Native KRST - ERC-20 LPs
     💧View every LP Token Pair
-    Dynamically loads every DonnySwap LP Token pair and displays relevant information
+        Dynamically loads every DonnySwap LP Token pair and displays relevant information
     ⛓Address Converter
-    Convert H160 (EVM) Address to SS58 (Substrate) address for sending KRST from Substrate wallets to EVM wallets
+        Convert H160 (EVM) Address to SS58 (Substrate) address for sending KRST from Substrate wallets to EVM wallets
     ✅Strict Token List
-    Current iteration only supports MRBL, KRST, WKREST
-    To have your ERC-20 added, send an email
+        Current iteration only supports MRBL, KRST, WKREST
+        To have your ERC-20 added, send an email to better.future.labs@gmail.com
+        and submit a PR to update src/assets/tokenList.json structured as follows:
+
+            "0xDd11f4E48CE3A2B9043B2B0758ce704d3Fd191dc": {
+                "symbol": "WKREST",
+                "address": "0xDd11f4E48CE3A2B9043B2B0758ce704d3Fd191dc",
+                decimals": 18,
+                "logo": "src/assets/WKREST_logo.png" // Please use IPFS link instead
+            },
+            
     📖Open-source Contracts
     Tokens:
     Marbles (MRBL) Contract: [Subscan](https://krest.subscan.io/account/0xDd11f4E48CE3A2B9043B2B0758ce704d3Fd191dc)
