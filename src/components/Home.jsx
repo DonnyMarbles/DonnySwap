@@ -7,7 +7,7 @@ const Home = () => (
   
   <HomeContainer>
     <div>
-    <h1>Welcome to DonnySwap!<br/>👑v0.1.06</h1>
+    <h1>Welcome to DonnySwap!<br/>👑v0.1.2</h1>
     <a href="https://x.com/Donny_Marbles"><img src="./src/assets/MRBL_logo.png" alt="Token Logo" width="60" /></a>
     <h1>Current features</h1>
     
@@ -16,13 +16,16 @@ const Home = () => (
       Swap ERC-20 - ERC-20 LPs <br/>
       Swap Native KRST - ERC-20 LPs <br/>
       Wrap / Unwrap KRST - WKREST <br/>
-      <li><h2>🔒Create & 🔓Remove LPs</h2></li>
+      <li><h2>💧Liquidity</h2></li>
+      <b>Add Liquidity</b>: 
       Create ERC-20 - ERC-20 LPs <br/>
-      Create Native KRST - ERC-20 LPs <br/>
+      Create Native KRST - ERC-20 LPs <br/><br/>
+      <b>Remove Liquidity</b>: 
       Remove ERC-20 - ERC-20 LPs <br/>
       Remove Native KRST - ERC-20 LPs <br/>
-      <li><h2>💧View every LP Token Pair</h2></li>
-      Dynamically loads every DonnySwap LP Token pair and displays relevant information <br/>
+      <li><h2>💰Balances</h2></li>
+      <b>LP Token Pairs</b>: Dynamically loads every DonnySwap LP Token pair and displays relevant information <br/>
+      <b>Token Balances</b>: Dynamically loads all Strict tokens & displays relevant information <br/>
       <li><h2>⛓Address Converter</h2></li>
       Convert H160 (EVM) Address to SS58 (Substrate) address
       for sending KRST from Substrate wallets to EVM wallets<br/>

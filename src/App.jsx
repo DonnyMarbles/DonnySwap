@@ -13,6 +13,7 @@ import './App.css';
 import RemoveLiquidity from './components/RemoveLiquidity';
 import Footer from './components/Footer';
 import TokenPairs from './components/TokenPairs';
+import TokenBalances from './components/TokenBalances';
 
 const queryClient = new QueryClient();
 
@@ -34,6 +35,7 @@ const App = () => (
               <Route path="/remove-liquidity" element={<RemoveLiquidity />} />
               <Route path="/address-converter" element={<AddressConverter />} />
               <Route path="/token-pairs" element={<TokenPairs />} />
+              <Route path="/token-balances" element={<TokenBalances />} />
             </Routes>
             <Footer />
           </Router>

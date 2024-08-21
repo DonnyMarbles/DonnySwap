@@ -1,4 +1,4 @@
-Welcome to DonnySwap v0.1.06
+Welcome to DonnySwap v0.1.2
 
 https://donnyswap.betterfuturelabs.xyz/
 
@@ -8,19 +8,25 @@ https://donnyswap.betterfuturelabs.xyz/
 If using multiple Web3 Wallets such as Phantom and Metamask, disable one, or update
 'Default Wallet App' setting in Phantom from 'Always Ask' to 'Metamask'
     
-    {Current features}
+    ***Current features***
 
     🔁Swap Tokens
         Swap ERC-20 - ERC-20 LPs
         Swap Native KRST - ERC-20 LPs
         Wrap / Unwrap KRST - WKREST
-    🔒Create & 🔓Remove LPs
-        Create ERC-20 - ERC-20 LPs
+        
+    💧Liquidity
+        Add Liquidity: Create ERC-20 - ERC-20 LPs
         Create Native KRST - ERC-20 LPs
-        Remove ERC-20 - ERC-20 LPs
+
+        Remove Liquidity: Remove ERC-20 - ERC-20 LPs
         Remove Native KRST - ERC-20 LPs
-    💧View every LP Token Pair
-        Dynamically loads every DonnySwap LP Token pair and displays relevant information
+
+    💰Balances
+        LP Token Pairs: Dynamically loads every DonnySwap LP Token pair and displays relevant information
+
+        Token Balances: Dynamically loads all Strict tokens & displays relevant information
+
     ⛓Address Converter
         Convert H160 (EVM) Address to SS58 (Substrate) address for sending KRST from Substrate wallets to EVM wallets
     ✅Strict Token List
