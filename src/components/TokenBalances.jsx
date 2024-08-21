@@ -20,7 +20,7 @@ const TokenBalances = () => {
                 setBlockNumber(blockNumber);
             };
 
-            const interval = setInterval(updateBlockNumber, 500);
+            const interval = setInterval(updateBlockNumber, 5000);
             return () => clearInterval(interval);
         }
     }, [provider]);
@@ -33,19 +33,26 @@ const TokenBalances = () => {
     }, [provider, account, blockNumber]);
 
     const fetchKRESTCirculatingSupply = async () => {
+        let wsProvider;
         try {
-            const wsProvider = new WsProvider('wss://krest.betterfuturelabs.xyz');
+            wsProvider = new WsProvider('wss://krest.betterfuturelabs.xyz');
             const api = await ApiPromise.create({ provider: wsProvider });
-
+    
             const circulatingSupply = await api.query.balances.totalIssuance();
             console.log(`Circulating Supply of KREST: ${circulatingSupply.toString()}`);
-
+    
             return ethers.BigNumber.from(circulatingSupply.toString());
         } catch (error) {
             console.error('Error fetching KREST circulating supply:', error);
             return ethers.BigNumber.from('0');
+        } finally {
+            // Ensure the WebSocket provider is disconnected to prevent connection leaks
+            if (wsProvider) {
+                await wsProvider.disconnect();
+            }
         }
     };
+    
 
     const fetchTokenData = async () => {
         const data = [];
