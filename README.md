@@ -7,7 +7,8 @@ https://donnyswap.betterfuturelabs.xyz/
 
 If using multiple Web3 Wallets such as Phantom and Metamask, disable one, or update
 'Default Wallet App' setting in Phantom from 'Always Ask' to 'Metamask'
-    **Current features**
+    
+    {Current features}
 
     🔁Swap Tokens
         Swap ERC-20 - ERC-20 LPs
