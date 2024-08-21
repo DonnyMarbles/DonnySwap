@@ -191,7 +191,7 @@ const AddLiquidity = () => {
   };
   const calculateExchangeRate = async (tokenSymbolA, tokenSymbolB) => {
     try {
-      const wrappedKrestAddress = "0xdd11f4e48ce3a2b9043b2b0758ce704d3fd191dc";
+      const wrappedKrestAddress = "0xDd11f4E48CE3A2B9043B2B0758ce704d3Fd191dc";
   
       // Resolve token addresses, using WKREST if KRST is involved
       const tokenAddressA = tokenSymbolA === 'KRST' ? wrappedKrestAddress : getTokenAddress(tokenSymbolA);
@@ -239,7 +239,7 @@ const AddLiquidity = () => {
       return ethers.constants.AddressZero;
     }
 
-    const wrappedKrestAddress = "0xdd11f4e48ce3a2b9043b2b0758ce704d3fd191dc";
+    const wrappedKrestAddress = "0xDd11f4E48CE3A2B9043B2B0758ce704d3Fd191dc";
 
     // Resolve token addresses, using WKREST if KRST is involved
     const tokenAddressA = tokenSymbolA === 'KRST' ? wrappedKrestAddress : getTokenAddress(tokenSymbolA);

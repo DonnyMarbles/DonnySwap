@@ -125,7 +125,7 @@ const Swap = () => {
       return ethers.constants.AddressZero;
     }
 
-    const wrappedKrestAddress = "0xdd11f4e48ce3a2b9043b2b0758ce704d3fd191dc";
+    const wrappedKrestAddress = "0xDd11f4E48CE3A2B9043B2B0758ce704d3Fd191dc";
 
     // Resolve token addresses, using WKREST if KRST is involved
     const tokenAddressA = tokenSymbolA === 'KRST' ? wrappedKrestAddress : getTokenAddress(tokenSymbolA);
@@ -145,7 +145,7 @@ const Swap = () => {
   const fetchExchangeRate = async (tokenSymbolA, tokenSymbolB) => {
     try {
       // Define the Wrapped KREST address
-      const wrappedKrestAddress = "0xdd11f4e48ce3a2b9043b2b0758ce704d3fd191dc";
+      const wrappedKrestAddress = "0xDd11f4E48CE3A2B9043B2B0758ce704d3Fd191dc";
   
       // Use the Wrapped KREST address if KRST is involved
       const tokenAddressA = tokenSymbolA === 'KRST' ? wrappedKrestAddress : getTokenAddress(tokenSymbolA);
@@ -289,7 +289,7 @@ const Swap = () => {
     }
   };
   
-  const isWrapOrUnwrap = (tokenA, tokenB) => (tokenA === 'KRST' && tokenB === tokens['0xdd11f4e48ce3a2b9043b2b0758ce704d3fd191dc'].address) || (tokenA === tokens['0xdd11f4e48ce3a2b9043b2b0758ce704d3fd191dc'].address && tokenB === 'KRST');
+  const isWrapOrUnwrap = (tokenA, tokenB) => (tokenA === 'KRST' && tokenB === tokens['0xDd11f4E48CE3A2B9043B2B0758ce704d3Fd191dc'].address) || (tokenA === tokens['0xDd11f4E48CE3A2B9043B2B0758ce704d3Fd191dc'].address && tokenB === 'KRST');
   const isKRSTSwap = (tokenA, tokenB) => tokenA === 'KRST' || tokenB === 'KRST';
 
   if (!provider || !signer) {
@@ -353,7 +353,7 @@ const Swap = () => {
           amountB={amountB}
           setAmountB={setAmountB}
           provider={provider}
-          WKRESTAddress={tokens['0xdd11f4e48ce3a2b9043b2b0758ce704d3fd191dc'].address}
+          WKRESTAddress={tokens['0xDd11f4E48CE3A2B9043B2B0758ce704d3Fd191dc'].address}
           WrappedKRESTABI={WrappedKRESTABI}
         />
       ) : isKRSTSwap(tokenA, tokenB) ? (
@@ -385,7 +385,7 @@ const Swap = () => {
           getTokenAddress={getTokenAddress}
           needsApprovalA={needsApprovalA}
           needsApprovalB={needsApprovalB}
-          WKRESTAddress={tokens['0xdd11f4e48ce3a2b9043b2b0758ce704d3fd191dc'].address}
+          WKRESTAddress={tokens['0xDd11f4E48CE3A2B9043B2B0758ce704d3Fd191dc'].address}
           checkAllowance={checkAllowance}
           error={error}
         />

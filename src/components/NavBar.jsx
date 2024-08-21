@@ -13,6 +13,7 @@ const NavBar = () => {
         <Link to="/add-liquidity">Add Liquidity</Link>
         <Link to="/remove-liquidity">Remove Liquidity</Link>
         <Link to="/address-converter">Address Converter</Link>
+        <Link to="/token-pairs">LP Token Pairs</Link>
       </NavLinks>
       <CustomConnectButton />
     </NavBarContainer>

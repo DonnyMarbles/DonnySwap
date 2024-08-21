@@ -39,8 +39,8 @@ const RemoveLiquidity = () => {
     setTokenOut(selectedTokenB);
 
     if (selectedTokenA === selectedTokenB ||
-      (selectedTokenA === 'KRST' && selectedTokenB === '0xdd11f4e48ce3a2b9043b2b0758ce704d3fd191dc') ||
-      (selectedTokenA === '0xdd11f4e48ce3a2b9043b2b0758ce704d3fd191dc' && selectedTokenB === 'KRST')) {
+      (selectedTokenA === 'KRST' && selectedTokenB === '0xDd11f4E48CE3A2B9043B2B0758ce704d3Fd191dc') ||
+      (selectedTokenA === '0xDd11f4E48CE3A2B9043B2B0758ce704d3Fd191dc' && selectedTokenB === 'KRST')) {
       setError('Invalid token pair selected.');
     } else {
       setError('');
@@ -111,8 +111,8 @@ const RemoveLiquidity = () => {
     }
 
     // Replace KRST with WKREST
-    const adjustedTokenSymbolA = tokenSymbolA === "KRST" ? "0xdd11f4e48ce3a2b9043b2b0758ce704d3fd191dc" : tokenSymbolA;
-    const adjustedTokenSymbolB = tokenSymbolB === "KRST" ? "0xdd11f4e48ce3a2b9043b2b0758ce704d3fd191dc" : tokenSymbolB;
+    const adjustedTokenSymbolA = tokenSymbolA === "KRST" ? "0xDd11f4E48CE3A2B9043B2B0758ce704d3Fd191dc" : tokenSymbolA;
+    const adjustedTokenSymbolB = tokenSymbolB === "KRST" ? "0xDd11f4E48CE3A2B9043B2B0758ce704d3Fd191dc" : tokenSymbolB;
 
     const pairAddress = await getPairAddress(getTokenAddress(adjustedTokenSymbolA), getTokenAddress(adjustedTokenSymbolB));
     if (!pairAddress || pairAddress === ethers.constants.AddressZero) {
@@ -138,7 +138,7 @@ const RemoveLiquidity = () => {
         console.log('Amount is zero, skipping check');
         return;
       }
-      const wrappedKRESTAddress = '0xdd11f4e48ce3a2b9043b2b0758ce704d3fd191dc';
+      const wrappedKRESTAddress = '0xDd11f4E48CE3A2B9043B2B0758ce704d3Fd191dc';
       const tokenAddressA = tokenSymbolA === 'KRST' ? wrappedKRESTAddress : getTokenAddress(tokenSymbolA);
       const tokenAddressB = tokenSymbolB === 'KRST' ? wrappedKRESTAddress : getTokenAddress(tokenSymbolB);
 
@@ -170,7 +170,7 @@ const RemoveLiquidity = () => {
   const checkLPTokenBalance = async (tokenSymbolA, tokenSymbolB) => {
     try {
       // Substitute KRST with Wrapped KREST address
-      const wrappedKRESTAddress = '0xdd11f4e48ce3a2b9043b2b0758ce704d3fd191dc'; // Replace with actual WKREST address
+      const wrappedKRESTAddress = '0xDd11f4E48CE3A2B9043B2B0758ce704d3Fd191dc'; // Replace with actual WKREST address
 
       const tokenAddressA = tokenSymbolA === 'KRST' ? wrappedKRESTAddress : getTokenAddress(tokenSymbolA);
       const tokenAddressB = tokenSymbolB === 'KRST' ? wrappedKRESTAddress : getTokenAddress(tokenSymbolB);
@@ -193,7 +193,7 @@ const RemoveLiquidity = () => {
 
   const calculateExchangeRate = async (tokenSymbolA, tokenSymbolB) => {
     try {
-      const wrappedKrestAddress = "0xdd11f4e48ce3a2b9043b2b0758ce704d3fd191dc";
+      const wrappedKrestAddress = "0xDd11f4E48CE3A2B9043B2B0758ce704d3Fd191dc";
 
       // Resolve token addresses, using WKREST if KRST is involved
       const tokenAddressA = tokenSymbolA === 'KRST' ? wrappedKrestAddress : getTokenAddress(tokenSymbolA);
@@ -233,12 +233,12 @@ const RemoveLiquidity = () => {
   };
   const getPairAddress = async (tokenSymbolA, tokenSymbolB) => {
     // Handle cases where KRST and WKREST are paired together or tokenA equals tokenB
-    const wrappedKrestAddress = "0xdd11f4e48ce3a2b9043b2b0758ce704d3fd191dc";
+    const wrappedKrestAddress = "0xDd11f4E48CE3A2B9043B2B0758ce704d3Fd191dc";
     const tokenAddressA = tokenSymbolA === 'KRST' ? wrappedKrestAddress : getTokenAddress(tokenSymbolA);
     const tokenAddressB = tokenSymbolB === 'KRST' ? wrappedKrestAddress : getTokenAddress(tokenSymbolB);
     if (
-      (tokenSymbolA === 'KRST' && tokenSymbolB === '0xdd11f4e48ce3a2b9043b2b0758ce704d3fd191dc') ||
-      (tokenSymbolA === '0xdd11f4e48ce3a2b9043b2b0758ce704d3fd191dc' && tokenSymbolB === 'KRST') ||
+      (tokenSymbolA === 'KRST' && tokenSymbolB === '0xDd11f4E48CE3A2B9043B2B0758ce704d3Fd191dc') ||
+      (tokenSymbolA === '0xDd11f4E48CE3A2B9043B2B0758ce704d3Fd191dc' && tokenSymbolB === 'KRST') ||
       (tokenSymbolA === tokenSymbolB)
     ) {
       return ethers.constants.AddressZero;

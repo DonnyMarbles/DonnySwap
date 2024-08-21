@@ -1,13 +1,13 @@
 {
-    "0xdd11f4e48ce3a2b9043b2b0758ce704d3fd191dc": {
+    "0xDd11f4E48CE3A2B9043B2B0758ce704d3Fd191dc": {
         "symbol": "WKREST",
-        "address": "0xdd11f4e48ce3a2b9043b2b0758ce704d3fd191dc",
+        "address": "0xDd11f4E48CE3A2B9043B2B0758ce704d3Fd191dc",
         "decimals": 18,
         "logo": "src/assets/WKREST_logo.png"
     },
-    "0xf5321b84aae2990fec72fd57af1b4a99b01eb928": {
+    "0xf5321b84aae2990FEC72FD57aF1B4a99B01EB928": {
         "symbol": "MRBL",
-        "address": "0xf5321b84aae2990fec72fd57af1b4a99b01eb928",
+        "address": "0xf5321b84aae2990FEC72FD57aF1B4a99B01EB928",
         "decimals": 18,
         "logo": "src/assets/MRBL_logo.png"
     },
