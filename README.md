@@ -1,4 +1,4 @@
-Welcome to DonnySwap v0.1.2
+Welcome to DonnySwap v0.1.21
 
 https://donnyswap.betterfuturelabs.xyz/
 
@@ -14,7 +14,7 @@ If using multiple Web3 Wallets such as Phantom and Metamask, disable one, or upd
         Swap ERC-20 - ERC-20 LPs
         Swap Native KRST - ERC-20 LPs
         Wrap / Unwrap KRST - WKREST
-        
+
     💧Liquidity
         Add Liquidity: Create ERC-20 - ERC-20 LPs
         Create Native KRST - ERC-20 LPs
