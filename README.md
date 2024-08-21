@@ -1,4 +1,4 @@
-Welcome to DonnySwap v0.1.05
+Welcome to DonnySwap v0.1.06
 
 https://donnyswap.betterfuturelabs.xyz/
 
@@ -46,4 +46,7 @@ If using multiple Web3 Wallets such as Phantom and Metamask, disable one, or upd
 
     Recommended H160 (EVM) Wallet: 🦊 Metamask
     Recommended SS58 (Substrate) Wallet: Talisman
+
+    KREST USD Price via CoinPaprika API (Thank you CoinPaprika!!!)
+
 

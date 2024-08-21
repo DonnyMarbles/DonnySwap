@@ -7,7 +7,7 @@ const Home = () => (
   
   <HomeContainer>
     <div>
-    <h1>Welcome to DonnySwap!<br/>👑v0.1.05</h1>
+    <h1>Welcome to DonnySwap!<br/>👑v0.1.06</h1>
     <a href="https://x.com/Donny_Marbles"><img src="./src/assets/MRBL_logo.png" alt="Token Logo" width="60" /></a>
     <h1>Current features</h1>
     
@@ -44,6 +44,8 @@ const Home = () => (
     
       <h3>If using multiple Web3 Wallets such as Phantom and Metamask, disable one, or update
       'Default Wallet App' setting in Phantom from 'Always Ask' to 'Metamask'</h3>
+
+      KREST USD Price via CoinPaprika API (Thank you CoinPaprika!!!)
     </ol>
   </div>
     </HomeContainer>
