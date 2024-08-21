@@ -1,9 +1,10 @@
 import React, { useEffect, useState, useContext } from 'react';
 import { Web3Context } from '../contexts/Web3Context';
 import { TokenContext } from '../contexts/TokenContext';
-import { ABIContext } from '../contexts/ABIContext'
+import { ABIContext } from '../contexts/ABIContext';
 import { ethers } from 'ethers';
 import WKRESTLogo from '../assets/WKREST_logo.png';
+import fetchKRESTPrice from '../fetchKRESTPrice';
 
 const Footer = () => {
   const { provider, account, setKrestBalance } = useContext(Web3Context);
@@ -11,6 +12,7 @@ const Footer = () => {
   const { ERC20ABI } = useContext(ABIContext);
   const [blockNumber, setBlockNumber] = useState(0);
   const [connected, setConnected] = useState(false);
+  const [krestPrice, setKrestPrice] = useState('0.0');
 
   useEffect(() => {
     if (provider) {
@@ -60,6 +62,16 @@ const Footer = () => {
       }
     };
 
+    const updatePrice = async () => {
+      const price = await fetchKRESTPrice();
+      if (price) {
+        setKrestPrice(price.toFixed(6));  // Format price to two decimal places
+      } else {
+        setKrestPrice('N/A');  // Handle case when price is not available
+      }
+    };
+
+    updatePrice();
     updateBalances();
   }, [blockNumber]);
 
@@ -75,6 +87,7 @@ const Footer = () => {
         </div>
         <img src={WKRESTLogo} alt="WKREST Logo" width="20" />
       </div>
+      <div>1 <img src={WKRESTLogo} alt="WKREST Logo" width="15" /> KREST : ${krestPrice} USD</div> {/* Display the KREST price */}
       <div>Block: {blockNumber}</div>
     </footer>
   );
