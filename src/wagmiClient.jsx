@@ -30,7 +30,7 @@ const { chains, provider } = configureChains(
 );
 
 const wagmiClient = createClient({
-  autoConnect: true,
+  autoConnect: false,
   provider,
 });
 

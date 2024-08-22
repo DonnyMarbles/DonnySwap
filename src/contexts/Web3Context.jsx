@@ -6,16 +6,17 @@ export const Web3Context = createContext();
 export const Web3ContextProvider = ({ children }) => {
   const [provider, setProvider] = useState(null);
   const [signer, setSigner] = useState(null);
-  const [account, setAccount] = useState(null);
+  const [account, setAccount] = useState(null); // This is the account state
   const [network, setNetwork] = useState(null);
   const [krestBalance, setKrestBalance] = useState(null);
 
   useEffect(() => {
     if (window.ethereum) {
-      connectWallet();
+      connectWallet(); // Attempt to connect wallet on load
       window.ethereum.on('chainChanged', handleChainChanged);
       window.ethereum.on('accountsChanged', handleAccountsChanged);
     }
+
     return () => {
       if (window.ethereum) {
         window.ethereum.removeListener('chainChanged', handleChainChanged);
@@ -31,6 +32,7 @@ export const Web3ContextProvider = ({ children }) => {
         setKrestBalance(ethers.utils.formatUnits(balance, 18));
       };
 
+      updateKrestBalance();
       const interval = setInterval(updateKrestBalance, 1000);
       return () => clearInterval(interval);
     }
@@ -39,83 +41,39 @@ export const Web3ContextProvider = ({ children }) => {
   const connectWallet = async () => {
     try {
       if (window.ethereum) {
-        console.log("Detected Ethereum provider:", window.ethereum);
-        const tempProvider = new ethers.providers.Web3Provider(window.ethereum);
-        await tempProvider.send("eth_requestAccounts", []);
-        const tempSigner = tempProvider.getSigner();
-        const tempAccount = await tempSigner.getAddress();
-        const tempNetwork = await tempProvider.getNetwork();
+        const web3Provider = new ethers.providers.Web3Provider(window.ethereum);
+        setProvider(web3Provider);
 
-        if (tempNetwork.chainId !== 2241) {
-          await switchToKrestNetwork(tempProvider);
-        }
+        const web3Signer = web3Provider.getSigner();
+        setSigner(web3Signer);
 
-        await verifyNetwork(tempProvider);
+        const userAccount = await web3Signer.getAddress();
+        setAccount(userAccount); // Set the account state here
 
-        setProvider(tempProvider);
-        setSigner(tempSigner);
-        setAccount(tempAccount);
-      } else {
-        alert("Please install MetaMask!");
+        const userNetwork = await web3Provider.getNetwork();
+        setNetwork(userNetwork);
       }
     } catch (error) {
-      console.error("Error connecting wallet:", error);
+      console.error('Error connecting to wallet:', error);
     }
   };
 
-  const switchToKrestNetwork = async (provider) => {
-    try {
-      await provider.send("wallet_addEthereumChain", [{
-        chainId: '0x8C1',
-        chainName: 'KREST EVM',
-        nativeCurrency: {
-          name: 'KREST',
-          symbol: 'KREST',
-          decimals: 18,
-        },
-        rpcUrls: ['https://krest.betterfuturelabs.xyz'],
-        blockExplorerUrls: ['https://krest.subscan.io'],
-      }]);
-    } catch (switchError) {
-      console.error("Error switching network:", switchError);
-    }
-  };
-
-  const verifyNetwork = async (provider) => {
-    try {
-      const network = await provider.getNetwork();
-      if (network.chainId === 2241) {
-        setNetwork(network);
-        console.log("Connected to KREST network with chainId:", network.chainId);
-      } else {
-        console.error("Failed to switch to KREST network. Current chainId:", network.chainId);
-      }
-    } catch (error) {
-      console.error("Error verifying network:", error);
-    }
-  };
-
-  const handleChainChanged = async (chainId) => {
-    await verifyNetwork(provider);
+  const handleChainChanged = (chainId) => {
     window.location.reload();
   };
 
-  const handleAccountsChanged = async (accounts) => {
+  const handleAccountsChanged = (accounts) => {
     if (accounts.length > 0) {
-      const tempSigner = provider.getSigner();
-      const tempAccount = await tempSigner.getAddress();
-      setSigner(tempSigner);
-      setAccount(tempAccount);
-      console.log("Account changed:", tempAccount);
+      setAccount(accounts[0]); // Update account state when account changes
     } else {
       setAccount(null);
       setSigner(null);
-      setProvider(null);
+      setKrestBalance(null);
     }
   };
 
   return (
-    <Web3Context.Provider value={{ provider, signer, account, network, krestBalance, setKrestBalance, connectWallet }}>
+    <Web3Context.Provider value={{ provider, setAccount, signer, account, network, krestBalance }}>
       {children}
     </Web3Context.Provider>
   );
