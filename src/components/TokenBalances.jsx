@@ -37,10 +37,10 @@ const TokenBalances = () => {
         try {
             wsProvider = new WsProvider('wss://krest.betterfuturelabs.xyz');
             const api = await ApiPromise.create({ provider: wsProvider });
-    
+
             const circulatingSupply = await api.query.balances.totalIssuance();
             console.log(`Circulating Supply of KREST: ${circulatingSupply.toString()}`);
-    
+
             return ethers.BigNumber.from(circulatingSupply.toString());
         } catch (error) {
             console.error('Error fetching KREST circulating supply:', error);
@@ -52,7 +52,7 @@ const TokenBalances = () => {
             }
         }
     };
-    
+
 
     const fetchTokenData = async () => {
         const data = [];
@@ -135,7 +135,7 @@ const TokenBalances = () => {
                     // Scale down total supply to prevent rounding issues
                     let scaledTotalSupply = Number(ethers.utils.formatUnits(totalSupply, 18));
                     let scaledBurnedTokens = Number(ethers.utils.formatUnits(totalBurnedTokens, 18));
-
+                    
                     console.log(`Scaled Total Supply of KRST: ${scaledTotalSupply}`);
                     console.log(`Scaled Burned Tokens (WKREST): ${scaledBurnedTokens}`);
 
@@ -173,9 +173,7 @@ const TokenBalances = () => {
                     const tokenContract = new ethers.Contract(tokenAddress, ERC20ABI, provider);
                     totalSupply = await tokenContract.totalSupply();
                     const burnedBalance = await tokenContract.balanceOf(nullAddress);
-                    circulatingSupply = totalSupply.sub(burnedBalance);
                     userBalance = await tokenContract.balanceOf(account);
-
                     // Ensure values are valid
                     if (!burnedBalance || !totalSupply) {
                         console.error(`Invalid values encountered for token ${symbol} at address ${tokenAddress}`);
@@ -184,7 +182,8 @@ const TokenBalances = () => {
 
                     totalBurnedTokens = burnedBalance.add(burnedTokens[symbol] || ethers.BigNumber.from(0));
                     console.log(`Total Burned Tokens for ${symbol}: ${ethers.utils.formatUnits(totalBurnedTokens, 18)}`);
-
+                    console.log(`Circulating Supply (before sub) for ${symbol}: ${circulatingSupply} `);
+                    circulatingSupply = totalSupply.sub(totalBurnedTokens);
                     burnedPercentage = totalBurnedTokens.mul(10000).mul(ethers.BigNumber.from(10).pow(18)).div(totalSupply);
                     burnedPercentageFormatted = Number(ethers.utils.formatUnits(burnedPercentage, 20)).toFixed(2);
                     console.log(`Burned Percentage for ${symbol}: ${burnedPercentageFormatted}%`);
