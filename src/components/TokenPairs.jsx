@@ -95,6 +95,7 @@ const TokenPairs = () => {
                 pairAddress,
                 tokenAAddress,
                 tokenBAddress,
+                burnedBalance,
                 burnedPercentage,  // Add the burned percentage to the data
             });
         }
@@ -114,6 +115,7 @@ const TokenPairs = () => {
                         <th>Total LP Tokens</th>
                         <th>Your LP Balance</th>
                         <th>Your LP Share %</th>
+                        <th>Total LP Tokens 🔥 </th>
                         <th>% Total LP Tokens 🔥</th> {/* Updated column header for burned percentage */}
                     </tr>
                 </thead>
@@ -173,6 +175,9 @@ const TokenPairs = () => {
                             <PercentageCell percentage={pair.userShare}>
                                 {pair.userShare.toFixed(2)}%
                             </PercentageCell>
+                            <td>
+                            {Number(ethers.utils.formatUnits(pair.burnedBalance, 18)).toFixed(6)}
+                            </td>
                             <PercentageCell percentage={pair.burnedPercentage}>
                                 {pair.burnedPercentage.toFixed(2)}%
                             </PercentageCell> {/* Updated cell for burned percentage */}
