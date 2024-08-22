@@ -16,7 +16,7 @@ export const StyledTable = styled.table`
   }
 
   th, td {
-    padding: 10px 15px;
+    padding: 20px 15px;
     text-align: center;
     border-bottom: 1px solid #ddd;
     vertical-align: middle; /* Ensures that content aligns vertically */
@@ -52,4 +52,12 @@ export const PercentageCell = styled.td`
   color: ${props => props.percentage > 0 ? 'green' : 'red'};
   text-align: right;
   vertical-align: middle; /* Ensure the text is vertically centered */
+`;
+
+// Add this for fixing any potential row issues:
+export const TableRow = styled.tr`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  min-height: 60px; /* Ensure minimum height matches cell height */
 `;
