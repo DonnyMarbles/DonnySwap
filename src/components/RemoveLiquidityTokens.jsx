@@ -75,8 +75,8 @@ const RemoveLiquidityTokens = ({
                 const factoryAddress = await routerContract.factory();
                 const factoryContract = new ethers.Contract(factoryAddress, UniswapV2FactoryABI, signer);
     
-                const tokenAAddress = tokenA === 'KRST' ? tokens['0xdd11f4e48ce3a2b9043b2b0758ce704d3fd191dc'].address : tokens[tokenA].address;
-                const tokenBAddress = tokenB === 'KRST' ? tokens['0xdd11f4e48ce3a2b9043b2b0758ce704d3fd191dc'].address : tokens[tokenB].address;
+                const tokenAAddress = tokenA === 'KRST' ? tokens['0xDd11f4E48CE3A2B9043B2B0758ce704d3Fd191dc'].address : tokens[tokenA].address;
+                const tokenBAddress = tokenB === 'KRST' ? tokens['0xDd11f4E48CE3A2B9043B2B0758ce704d3Fd191dc'].address : tokens[tokenB].address;
     
                 const pairAddress = await factoryContract.getPair(tokenAAddress, tokenBAddress);
                 const pairContract = new ethers.Contract(pairAddress, UniswapV2PairABI, signer);

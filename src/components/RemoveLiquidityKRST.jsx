@@ -19,6 +19,8 @@ const RemoveLiquidityKRST = ({
   UniswapV2Router02ABI,
   UniswapV2FactoryABI,
   UniswapV2PairABI,
+  getPairAddress,
+  getTokenAddress,
   account,
   tokens,
   exchangeRate,
@@ -52,8 +54,8 @@ const RemoveLiquidityKRST = ({
                 const factoryContract = new ethers.Contract(factoryAddress, UniswapV2FactoryABI, signer);
                 console.log("Factory contract instantiated.");
 
-                const tokenAAddress = tokenA === 'KRST' ? tokens['0xdd11f4e48ce3a2b9043b2b0758ce704d3fd191dc'].address : tokens[tokenA].address;
-                const tokenBAddress = tokenB === 'KRST' ? tokens['0xdd11f4e48ce3a2b9043b2b0758ce704d3fd191dc'].address : tokens[tokenB].address;
+                const tokenAAddress = tokenA === 'KRST' ? tokens['0xDd11f4E48CE3A2B9043B2B0758ce704d3Fd191dc'].address : tokens[tokenA].address;
+                const tokenBAddress = tokenB === 'KRST' ? tokens['0xDd11f4E48CE3A2B9043B2B0758ce704d3Fd191dc'].address : tokens[tokenB].address;
                 console.log(`Token A Address: ${tokenAAddress}`);
                 console.log(`Token B Address: ${tokenBAddress}`);
 
@@ -102,13 +104,12 @@ const RemoveLiquidityKRST = ({
 
 
   const handleApprove = async (tokenSymbolA, tokenSymbolB, amount) => {
-    const wrappedKrestAddress = "0xdd11f4e48ce3a2b9043b2b0758ce704d3fd191dc";
+    const wrappedKrestAddress = "0xDd11f4E48CE3A2B9043B2B0758ce704d3Fd191dc";
     const tokenAddressA = tokenSymbolA === 'KRST' ? wrappedKrestAddress : tokens[tokenSymbolA]?.address;
     const tokenAddressB = tokenSymbolB === 'KRST' ? wrappedKrestAddress : tokens[tokenSymbolB]?.address;
 
     try {
-      const routerContract = new ethers.Contract(routerAddress, UniswapV2Router02ABI, signer);
-      const pairAddress = await routerContract.getPair(tokenAddressA, tokenAddressB);
+      const pairAddress = await getPairAddress(getTokenAddress(tokenAddressA), getTokenAddress(tokenAddressB));
       if (!pairAddress || pairAddress === ethers.constants.AddressZero) throw new Error('Pair address not found');
 
       const pairContract = new ethers.Contract(pairAddress, UniswapV2PairABI, signer);
@@ -120,10 +121,10 @@ const RemoveLiquidityKRST = ({
 
       setAllowanceLP(amountParsed);
       setNeedsApprovalLP(false);
-    } catch (err) {
+  } catch (err) {
       console.error('Error approving LP tokens:', err);
-    }
-  };
+  }
+};
 
   const handleRemoveLiquidity = async () => {
     if (error) {
@@ -149,8 +150,8 @@ const RemoveLiquidityKRST = ({
       console.log("Factory Contract instantiated.");
 
       // Handle the scenario where KRST is selected
-      let tokenAAddress = tokenA === 'KRST' ? tokens['0xdd11f4e48ce3a2b9043b2b0758ce704d3fd191dc'].address : tokens[tokenA].address;
-      let tokenBAddress = tokenB === 'KRST' ? tokens['0xdd11f4e48ce3a2b9043b2b0758ce704d3fd191dc'].address : tokens[tokenB].address;
+      let tokenAAddress = tokenA === 'KRST' ? tokens['0xDd11f4E48CE3A2B9043B2B0758ce704d3Fd191dc'].address : tokens[tokenA].address;
+      let tokenBAddress = tokenB === 'KRST' ? tokens['0xDd11f4E48CE3A2B9043B2B0758ce704d3Fd191dc'].address : tokens[tokenB].address;
 
       const pairAddress = await factoryContract.getPair(tokenAAddress, tokenBAddress);
       console.log(`Pair Address: ${pairAddress}`);
