@@ -7,7 +7,7 @@ import { ABIContextProvider } from './contexts/ABIContext';
 import Home from './components/Home';
 import Swap from './components/Swap';
 import NavBar from './components/NavBar';
-import AddressConverter from './components/AddressConverter'
+import AddressConverter from './components/AddressConverter';
 import AddLiquidity from './components/AddLiquidity';
 import './App.css';
 import RemoveLiquidity from './components/RemoveLiquidity';

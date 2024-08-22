@@ -48,7 +48,6 @@ const Swap = () => {
     }
   }, [tokenB]);
   
-  
 
   useEffect(() => {
     if (provider) {
@@ -292,7 +291,7 @@ const Swap = () => {
   const isWrapOrUnwrap = (tokenA, tokenB) => (tokenA === 'KRST' && tokenB === tokens['0xDd11f4E48CE3A2B9043B2B0758ce704d3Fd191dc'].address) || (tokenA === tokens['0xDd11f4E48CE3A2B9043B2B0758ce704d3Fd191dc'].address && tokenB === 'KRST');
   const isKRSTSwap = (tokenA, tokenB) => tokenA === 'KRST' || tokenB === 'KRST';
 
-  if (!provider || !signer) {
+  if (!provider) {
     return <div>Loading...</div>;
   }
 

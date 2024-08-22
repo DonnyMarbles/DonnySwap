@@ -7,6 +7,7 @@ export default defineConfig({
     alias: {
       '@': '/src',
       'buffer': 'buffer',
+      'global': 'global',
     },
   },
   optimizeDeps: {

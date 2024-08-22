@@ -1,9 +1,10 @@
-// src/wagmiClient.js
-import { createClient, configureChains } from 'wagmi';
+import { createClient, configureChains, WagmiConfig } from 'wagmi';
 import { publicProvider } from 'wagmi/providers/public';
 import { jsonRpcProvider } from 'wagmi/providers/jsonRpc';
+import { ethers } from 'ethers';
+import Web3Modal from 'web3modal';
 
-// Example configuration for KREST EVM
+// Define your custom chain
 const krestChain = {
   id: 2241,
   name: 'KREST EVM',
@@ -21,6 +22,7 @@ const krestChain = {
   },
 };
 
+// Configure chains
 const { chains, provider } = configureChains(
   [krestChain],
   [
@@ -29,9 +31,16 @@ const { chains, provider } = configureChains(
   ]
 );
 
+// Initialize Web3Modal
+const web3Modal = new Web3Modal({
+  cacheProvider: true, // optional
+  providerOptions: {} // required
+});
+
+// Create wagmi client
 const wagmiClient = createClient({
-  autoConnect: false,
+  autoConnect: true,
   provider,
 });
 
-export default wagmiClient;
+export { web3Modal, wagmiClient, chains };

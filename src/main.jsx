@@ -1,3 +1,8 @@
+if (typeof global === 'undefined') {
+  window.global = window;
+}
+
+
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { configureChains, createClient, WagmiConfig } from 'wagmi';
@@ -6,6 +11,7 @@ import { publicProvider } from 'wagmi/providers/public';
 import App from './App';
 import './index.css';
 import '@rainbow-me/rainbowkit/styles.css';
+
 
 const krestChain = {
   id: 2241,
@@ -35,7 +41,7 @@ const { connectors } = getDefaultWallets({
 });
 
 const wagmiClient = createClient({
-  autoConnect: true,
+  autoConnect: false,
   connectors,
   provider,
 });
