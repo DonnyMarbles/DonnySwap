@@ -19,10 +19,11 @@ export const StyledTable = styled.table`
     padding: 25px 15px;
     text-align: flex;
     border-bottom: 1px solid #ddd;
+     background: #fcc375;
   }
 
   th {
-    background-color: #1e1e1e;
+    background-color: #dbaa65;
     font-weight: bold;
   }
 

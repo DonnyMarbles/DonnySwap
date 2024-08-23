@@ -72,7 +72,7 @@ const Footer = () => {
   }, [blockNumber, account, provider, tokens]);
 
   return (
-    <footer style={{ display: 'flex', justifyContent: 'space-between', padding: '10px', backgroundColor: '#333', color: '#fff' }}>
+    <footer style={{ display: 'flex', justifyContent: 'space-between', padding: '10px', backgroundColor: '#fcc375', color: '#000000' }}>
       <div style={{ display: 'flex', alignItems: 'center' }}>
         <div style={{ marginRight: '10px' }}>
           {isConnected ? (

@@ -1,6 +1,7 @@
 import styled from 'styled-components';
 
 export const ConverterContainer = styled.div`
+  background: #dbaa65;
   display: flex;
   flex-direction: column;
   align-items: center;

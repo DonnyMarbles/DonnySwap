@@ -6,7 +6,7 @@ export const AddLiquidityContainer = styled.div`
   align-items: center;
   margin: 20px;
   padding: 20px;
-  background: #1e1e1e;
+  background: #fcc375;
   border-radius: 10px;
   width: 100%;
   max-width: 400px;
@@ -23,8 +23,8 @@ export const AddLiquidityInputContainer = styled.div`
     margin: 5px 0;
     border-radius: 5px;
     border: 1px solid #ccc;
-    background: #2c2c2c;
-    color: #fff;
+    background: #dbaa65;
+    color: #000000;
   }
 `;
 
@@ -33,8 +33,8 @@ export const AddLiquidityButton = styled.button`
   margin-top: 10px;
   border: none;
   border-radius: 5px;
-  background: #007bff;
-  color: #fff;
+  background: #dbaa65;
+  color: #000;
   cursor: pointer;
 
   &:hover {
@@ -56,23 +56,23 @@ export const TokenInfo = styled.div`
 export const LPTokenBalance = styled.div`
   margin-top: 15px;
   font-size: 0.9em;
-  color: #ccc;
+  color: #000;
 `;
 
 export const ExchangeRate = styled.div`
   margin-top: 10px;
   font-size: 0.9em;
-  color: #ccc;
+  color: #000;
 `;
 
 export const NoLiquidityMessage = styled.div`
   margin-top: 10px;
-  color: #ff4d4d;
+  color: #000;
   font-size: 0.9em;
 `;
 
 export const ErrorMessage = styled.div`
   margin-top: 10px;
-  color: #ff4d4d;
+  color: #000;
   font-size: 0.9em;
 `;

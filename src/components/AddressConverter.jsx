@@ -7,6 +7,7 @@ import {convertH160ToSs58,
         encodePolkadotAddress, 
         validateSs58, 
         getPubKey} from './utils';
+import { ConverterContainer } from '../styles/AddressConverterStyles';
 
 
 
@@ -78,7 +79,7 @@ const AddressConverter= () => {
   }
 
   return (
-    <div className="App">
+    <ConverterContainer>
       <form onSubmit={handleSubmit}>
         <div className="form-group">
           <label className='form-label'> <h3>Input address format: </h3></label>
@@ -109,7 +110,7 @@ const AddressConverter= () => {
       <div className='output-address' dangerouslySetInnerHTML={{__html: outputAddress}} />
     <div><h2>To fund your H160 (EVM) address, convert your 0x address above;<br/>and send to SS58 (Substrate) address from 
         Substrate-based Wallet* </h2><h3>*(Polkadot.js / Talisman / Nova / Subwallet)</h3></div>
-    </div>
+    </ConverterContainer>
   );
 }
 

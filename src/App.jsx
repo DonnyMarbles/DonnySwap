@@ -20,8 +20,7 @@ const App = () => (
     <TokenContextProvider>
       <ABIContextProvider>
         <div>
-          <h1>👑DonnySwap</h1>
-          <h2>Open-Source Permissionlessly Provided Infrastructure</h2>
+          <img src="src/assets/DonnySwapLogo.png" width="25%"/>
         </div>
         <Router>
           <NavBar />
