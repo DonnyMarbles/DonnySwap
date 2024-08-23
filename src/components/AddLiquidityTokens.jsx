@@ -41,11 +41,22 @@ const AddLiquidityTokens = ({
         try {
             const tokenAddress = getTokenAddress(tokenSymbol);
             if (!tokenAddress) throw new Error(`Token address for ${tokenSymbol} not found`);
-            const contract = new ethers.Contract(tokenAddress, ERC20ABI, signer);
-            const amountParsed = ethers.utils.parseUnits(amount.toString(), getTokenDecimals(tokenSymbol));
+    
+            const decimals = getTokenDecimals(tokenSymbol);
+            let amountParsed;
+    
+            // Ensure the amount is at least 0.01
+            if (amount < 0.01) {
+                amountParsed = ethers.utils.parseUnits('0.01', decimals);
+            } else {
+                amountParsed = ethers.utils.parseUnits(amount.toString(), decimals);
+            }
+    
             console.log(`Approving ${amountParsed.toString()} of ${tokenSymbol}`);
+            const contract = new ethers.Contract(tokenAddress, ERC20ABI, signer);
             const tx = await contract.approve(routerAddress, amountParsed);
             await tx.wait();
+    
             if (tokenSymbol === tokenA) {
                 setAllowanceA(amountParsed);
                 setNeedsApprovalA(false);
@@ -57,6 +68,9 @@ const AddLiquidityTokens = ({
             console.error('Error approving token:', err);
         }
     };
+    
+
+    
 
     const handleAddLiquidity = async () => {
         try {

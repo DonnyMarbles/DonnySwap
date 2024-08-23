@@ -108,7 +108,7 @@ const RemoveLiquidity = () => {
   };
 
   const checkIfNeedsApproval = async (tokenSymbolA, tokenSymbolB, amount, allowance, setNeedsApprovalLP) => {
-    if (tokenSymbolA === "default" || tokenSymbolB === "default" || amount === "") {
+    if (tokenSymbolA === "default" || tokenSymbolB === "default" || amount === "" || amount === 0) {
       return; // Skip check if tokens are not selected
     }
 
@@ -122,10 +122,11 @@ const RemoveLiquidity = () => {
       setNeedsApprovalLP(true);
       return;
     }
-
+    const decimals = getTokenDecimals(pairAddress);
     try {
-      const amountParsed = ethers.utils.parseUnits(amount.toString(), 18);
-      console.log(`Amount parsed for LP tokens of ${adjustedTokenSymbolA}-${adjustedTokenSymbolB}: ${amountParsed}, Allowance: ${allowance}`);
+      const minAmount = 0.01;
+      const amountToCheck = parseFloat(amount) < minAmount ? minAmount : parseFloat(amount);
+      const amountParsed = ethers.utils.parseUnits(amountToCheck.toString(), decimals);      console.log(`Amount parsed for LP tokens of ${adjustedTokenSymbolA}-${adjustedTokenSymbolB}: ${amountParsed}, Allowance: ${allowance}`);
       setNeedsApprovalLP(amountParsed.gt(allowance));
     } catch (err) {
       console.error(`Error parsing amount for LP tokens of ${adjustedTokenSymbolA}-${adjustedTokenSymbolB}:`, err);

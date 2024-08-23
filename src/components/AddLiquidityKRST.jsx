@@ -40,10 +40,19 @@ const AddLiquidityKRST = ({
 
   const handleApprove = async (tokenSymbol, amount) => {
     try {
+      if (tokenSymbol === 'KRST'){
+        return;
+      }
+      let amountParsed;
+      const decimals = getTokenDecimals(tokenSymbol);
       const tokenAddress = getTokenAddress(tokenSymbol);
       if (!tokenAddress) throw new Error(`Token address for ${tokenSymbol} not found`);
       const contract = new ethers.Contract(tokenAddress, ERC20ABI, signer);
-      const amountParsed = ethers.utils.parseUnits(amount.toString(), getTokenDecimals(tokenSymbol));
+      if (amount < 0.01) {
+        amountParsed = ethers.utils.parseUnits('0.01', decimals);
+      } else {
+        amountParsed = ethers.utils.parseUnits(amount.toString(), decimals);
+      }
       console.log(`Approving ${amountParsed.toString()} of ${tokenSymbol}`);
       const tx = await contract.approve(routerAddress, amountParsed);
       await tx.wait();

@@ -100,20 +100,30 @@ const RemoveLiquidityTokens = ({
         try {
             const pairAddress = await getPairAddress(getTokenAddress(tokenSymbolA), getTokenAddress(tokenSymbolB));
             if (!pairAddress || pairAddress === ethers.constants.AddressZero) throw new Error('Pair address not found');
-
+    
             const pairContract = new ethers.Contract(pairAddress, UniswapV2PairABI, signer);
-            const amountParsed = ethers.utils.parseUnits(amount.toString(), 18);
+    
+            // Round up to 0.01 if the amount is less than 0.01
+            let amountParsed;
+            if (amount < 0.01) {
+                amountParsed = ethers.utils.parseUnits('0.01', 18);
+            } else {
+                amountParsed = ethers.utils.parseUnits(amount.toString(), 18);
+            }
+    
             console.log(`Approving ${amountParsed.toString()} of LP tokens for ${tokenSymbolA}-${tokenSymbolB}`);
-
+    
             const tx = await pairContract.approve(routerAddress, amountParsed);
             await tx.wait();
-
+    
             setAllowanceLP(amountParsed);
             setNeedsApprovalLP(false);
         } catch (err) {
             console.error('Error approving LP tokens:', err);
         }
     };
+    
+    
 
     const handleRemoveLiquidity = async () => {
         try {
