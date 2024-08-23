@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import RemoveLiquidityTokens from './RemoveLiquidityTokens';
 import RemoveLiquidityKRST from './RemoveLiquidityKRST';
 import { ethers } from 'ethers';

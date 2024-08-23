@@ -18,7 +18,7 @@ const Swap = () => {
   const provider = useProvider();
   const { address: account } = useAccount();
   const { data: signer } = useSigner();
-  
+  const WKRESTAddress = '0xDd11f4E48CE3A2B9043B2B0758ce704d3Fd191dc';
   const { tokens, routerAddress } = useContext(TokenContext);
   const { UniswapV2Router02ABI, UniswapV2PairABI, UniswapV2FactoryABI, ERC20ABI, WrappedKRESTABI } = useContext(ABIContext);
 
@@ -295,7 +295,7 @@ const Swap = () => {
     }
   };
   
-  const isWrapOrUnwrap = (tokenA, tokenB) => (tokenA === 'KRST' && tokenB === tokens['0xDd11f4E48CE3A2B9043B2B0758ce704d3Fd191dc'].address) || (tokenA === tokens['0xDd11f4E48CE3A2B9043B2B0758ce704d3Fd191dc'].address && tokenB === 'KRST');
+  const isWrapOrUnwrap = (tokenA, tokenB) => (tokenA === 'KRST' && tokenB === WKRESTAddress && tokenB === 'KRST');
   const isKRSTSwap = (tokenA, tokenB) => tokenA === 'KRST' || tokenB === 'KRST';
 
   if (!provider) {
@@ -359,7 +359,7 @@ const Swap = () => {
           amountB={amountB}
           setAmountB={setAmountB}
           provider={provider}
-          WKRESTAddress={tokens['0xDd11f4E48CE3A2B9043B2B0758ce704d3Fd191dc'].address}
+          WKRESTAddress={WKRESTAddress}
           WrappedKRESTABI={WrappedKRESTABI}
         />
       ) : isKRSTSwap(tokenA, tokenB) ? (
@@ -391,7 +391,7 @@ const Swap = () => {
           getTokenAddress={getTokenAddress}
           needsApprovalA={needsApprovalA}
           needsApprovalB={needsApprovalB}
-          WKRESTAddress={tokens['0xDd11f4E48CE3A2B9043B2B0758ce704d3Fd191dc'].address}
+          WKRESTAddress={WKRESTAddress}
           checkAllowance={checkAllowance}
           error={error}
         />
