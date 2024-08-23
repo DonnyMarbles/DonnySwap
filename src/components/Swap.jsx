@@ -243,6 +243,7 @@ const Swap = () => {
     if (exchangeRate && currentBalance) {
       const newAmountB = currentBalance * exchangeRate;
       setAmountB(newAmountB);
+      handleAmountBChange(newAmountB);
     }
   };
   
@@ -253,6 +254,7 @@ const Swap = () => {
     if (exchangeRate && currentBalance) {
       const newAmountA = currentBalance / exchangeRate;
       setAmountA(newAmountA);
+      handleAmountAChange(newAmountA);
     }
   };
 
