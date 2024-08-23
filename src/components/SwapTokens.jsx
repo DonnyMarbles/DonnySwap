@@ -22,11 +22,11 @@ const SwapTokens = ({
   setAllowanceA,
   error
 }) => {
-  const [minimumAmountOut, setMinimumAmountOut] = useState(null);
+  const [minimumAmountOut, setMinimumAmountOut] = useState(0);
 
   useEffect(() => {
     const calculateMinimumAmountOut = async () => {
-      if (amountA != '0.' && slippage >= 0 && tokenA && tokenB && signer) {
+      if (amountA != '' && slippage >= 0 && tokenA && tokenB && signer) {
         try {
           const decimalsA = getTokenDecimals(tokenA);
           const decimalsB = getTokenDecimals(tokenB);

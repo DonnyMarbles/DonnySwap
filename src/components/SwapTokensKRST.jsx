@@ -22,7 +22,7 @@ const SwapTokens = ({
   getTokenAddress,
   error
 }) => {
-  const [minimumAmountOut, setMinimumAmountOut] = useState(null);
+  const [minimumAmountOut, setMinimumAmountOut] = useState(0);
   const checkBalance = async (tokenSymbol, setBalance) => {
     try {
       const balance = tokenSymbol === 'KRST'
@@ -53,7 +53,7 @@ const SwapTokens = ({
   };
   useEffect(() => {
     const calculateMinimumAmountOut = async () => {
-      if (amountA != '0.' && slippage >= 0 && tokenA && tokenB && signer) {
+      if (amountA != '' && slippage >= 0 && tokenA && tokenB && signer) {
         try {
           const wrappedKrestAddress = "0xdd11f4e48ce3a2b9043b2b0758ce704d3fd191dc";
 

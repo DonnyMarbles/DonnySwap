@@ -24,10 +24,10 @@ const Swap = () => {
 
   const [tokenA, setTokenIn] = useState('');
   const [tokenB, setTokenOut] = useState('');
-  const [amountA, setAmountA] = useState('0.');
-  const [amountB, setAmountB] = useState('0.');
-  const [balanceA, setBalanceA] = useState('0.');
-  const [balanceB, setBalanceB] = useState('0.');
+  const [amountA, setAmountA] = useState('');
+  const [amountB, setAmountB] = useState('');
+  const [balanceA, setBalanceA] = useState('0.0');
+  const [balanceB, setBalanceB] = useState('0.0');
   const [slippage, setSlippage] = useState(0.5);
   const [noLiquidity, setNoLiquidity] = useState(false);
   const [allowanceA, setAllowanceA] = useState(ethers.constants.Zero);
@@ -44,7 +44,7 @@ const Swap = () => {
       console.log(`Balance A set to: ${balanceA}`);
     }
   }, [tokenA]);
-  
+
   useEffect(() => {
     if (tokenB && account) {
       checkBalance(tokenB, setBalanceB);
@@ -185,7 +185,7 @@ const Swap = () => {
 
   const checkAllowance = async (tokenSymbol, setAllowance, setNeedsApproval, amount) => {
     try {
-      if (amount === 0) {
+      if (amount === 0 || amount === '') {
         return; // Skip check if token is not selected
       }
       const tokenAddress = getTokenAddress(tokenSymbol);
@@ -209,9 +209,13 @@ const Swap = () => {
   };
 
   const checkIfNeedsApproval = (tokenSymbol, amount, allowance, setNeedsApproval) => {
-    if (tokenSymbol === 'default') return; // Skip check if token is not selected
+    if (tokenSymbol === 'default' || amount === '.') return; // Skip check if token is not selected
+
     try {
-      const amountParsed = ethers.utils.parseUnits(amount.toString(), getTokenDecimals(tokenSymbol));
+      // Convert the amount to BN and ensure it's at least 0.01
+      const minAmount = 0.01;
+      const amountToCheck = parseFloat(amount) < minAmount ? minAmount : parseFloat(amount);
+      const amountParsed = ethers.utils.parseUnits(amountToCheck.toString(), getTokenDecimals(tokenSymbol));
       setNeedsApproval(amountParsed.gt(allowance));
     } catch (err) {
       console.error(`Error parsing amount for ${tokenSymbol}:`, err);
@@ -251,7 +255,7 @@ const Swap = () => {
       handleAmountBChange(newAmountB);
     }
   };
-  
+
   const handleBalanceClickOut = () => {
     const currentBalance = parseFloat(balanceB); // Ensure the balance is treated as a number
     setAmountB(currentBalance); // Directly set the balance as the amount
@@ -294,7 +298,7 @@ const Swap = () => {
       setAmountB('0.');
     }
   };
-  
+
   const isWrapOrUnwrap = (tokenA, tokenB) => (tokenA === 'KRST' && tokenB === WKRESTAddress && tokenB === 'KRST');
   const isKRSTSwap = (tokenA, tokenB) => tokenA === 'KRST' || tokenB === 'KRST';
 
@@ -319,12 +323,12 @@ const Swap = () => {
           </TokenInfo>
         )}
         <input
-          type="text" 
+          type="number"
           inputMode="decimal"
           placeholder="Amount A"
           value={amountA}
           onChange={(e) => handleAmountAChange(e.target.value)}
-          min="0.0"
+          min={0}
           max={balanceA}
         />
       </SwapInputContainer>
@@ -342,12 +346,12 @@ const Swap = () => {
           </TokenInfo>
         )}
         <input
-          type="text" 
+          type="number"
           inputMode="decimal"
           placeholder="Amount B"
           value={amountB}
           onChange={(e) => handleAmountBChange(e.target.value)}
-          min="0.0"
+          min={0}
           max={balanceB}
         />
       </SwapInputContainer>

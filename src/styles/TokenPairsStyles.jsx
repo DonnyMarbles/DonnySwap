@@ -32,8 +32,8 @@ export const StyledTable = styled.table`
 
   img {
     border-radius: 50%;
-    width: 32px;
-    height: 32px;
+    width: 30x;
+    height: 30px;
   }
 `;
 
@@ -42,7 +42,7 @@ export const LogoCell = styled.td`
   align-items: center;
 
   img {
-    margin: 20px 0;
+    margin: 35px 35px;
     margin-right: 10px;
   }
 `;

@@ -21,8 +21,8 @@ const AddLiquidity = () => {
   
   const [tokenA, setTokenIn] = useState('');
   const [tokenB, setTokenOut] = useState('');
-  const [amountA, setAmountA] = useState('0.');
-  const [amountB, setAmountB] = useState('0.');
+  const [amountA, setAmountA] = useState('');
+  const [amountB, setAmountB] = useState('');
   const [lpBalance, setLpBalance] = useState('0.'); 
   const [balanceA, setBalanceA] = useState('0.');
   const [balanceB, setBalanceB] = useState('0.');
@@ -117,7 +117,7 @@ const AddLiquidity = () => {
   };
 
   const checkIfNeedsApproval = (tokenSymbol, amount, allowance, setNeedsApproval) => {
-    if (tokenSymbol === "default") {
+    if (tokenSymbol === "default" || amount === "") {
       return; // Skip check if token is not selected
     }
     const tokenAddress = getTokenAddress(tokenSymbol);
@@ -128,7 +128,9 @@ const AddLiquidity = () => {
     }
     const decimals = getTokenDecimals(tokenSymbol);
     try {
-      const amountParsed = ethers.utils.parseUnits(amount.toString(), decimals);
+      const minAmount = 0.01;
+      const amountToCheck = parseFloat(amount) < minAmount ? minAmount : parseFloat(amount);
+      const amountParsed = ethers.utils.parseUnits(amountToCheck.toString(), decimals);
       console.log(`Amount parsed for ${tokenSymbol}: ${amountParsed}, Allowance: ${allowance}`);
       setNeedsApproval(amountParsed.gt(allowance));
     } catch (err) {
@@ -148,13 +150,7 @@ const AddLiquidity = () => {
       }
       if (tokenSymbol === 'KRST') {
         setAllowance(ethers.constants.MaxUint256); // Native token doesn't need allowance
-      } else if ((tokenSymbol === 'WKREST') && (amountA && amountB !== "default")) {
-        const contract = new ethers.Contract(tokenAddress, WrappedKRESTABI, provider);
-        const allowance = await contract.allowance(account, routerAddress);
-        setAllowance(allowance);
-        console.log(`Allowance for ${tokenSymbol}: ${allowance.toString()}`);
-        checkIfNeedsApproval(tokenSymbol, amount, allowance, setNeedsApproval);
-      } else if (amountA && amountB !== "default") {
+      } else {
         const contract = new ethers.Contract(tokenAddress, ERC20ABI, provider);
         const allowance = await contract.allowance(account, routerAddress);
         setAllowance(allowance);
@@ -364,12 +360,12 @@ const AddLiquidity = () => {
           </TokenInfo>
         )}
         <input
-          type="text" 
+          type="number" 
           inputMode="decimal"
           placeholder="Amount A"
           value={amountA}
           onChange={(e) => handleAmountAChange(e.target.value)}
-          min="0.0"
+          min={0}
           max={balanceA}
         />
       </AddLiquidityInputContainer>
@@ -387,12 +383,12 @@ const AddLiquidity = () => {
           </TokenInfo>
         )}
         <input
-          type="text" 
+          type="number" 
           inputMode="decimal"
           placeholder="Amount B"
           value={amountB}
           onChange={(e) => handleAmountBChange(e.target.value)}
-          min="0.0"
+          min={0}
           max={balanceB}
         />
       </AddLiquidityInputContainer>

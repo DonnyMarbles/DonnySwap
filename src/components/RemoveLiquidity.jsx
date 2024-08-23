@@ -22,8 +22,8 @@ const RemoveLiquidity = () => {
 
   const [tokenA, setTokenIn] = useState('');
   const [tokenB, setTokenOut] = useState('');
-  const [amountA, setAmountA] = useState('0.');
-  const [amountB, setAmountB] = useState('0.');
+  const [amountA, setAmountA] = useState('');
+  const [amountB, setAmountB] = useState('');
   const [lpBalance, setLpBalance] = useState('0.');
   const [balanceA, setBalanceA] = useState('0.');
   const [balanceB, setBalanceB] = useState('0.');
@@ -108,7 +108,7 @@ const RemoveLiquidity = () => {
   };
 
   const checkIfNeedsApproval = async (tokenSymbolA, tokenSymbolB, amount, allowance, setNeedsApprovalLP) => {
-    if (tokenSymbolA === "default" || tokenSymbolB === "default") {
+    if (tokenSymbolA === "default" || tokenSymbolB === "default" || amount === "") {
       return; // Skip check if tokens are not selected
     }
 
@@ -353,12 +353,12 @@ const RemoveLiquidity = () => {
         <RemoveLiquidityInputContainer>
           LP Tokens to Remove:
           <input
-          type="text" 
+          type="number" 
           inputMode="decimal"
           placeholder="Amount A"
           value={amountA}
           onChange={(e) => handleAmountAChange(e.target.value)}
-          min="0.0"
+          min={0}
           max={lpBalance}
         />
       </RemoveLiquidityInputContainer>
