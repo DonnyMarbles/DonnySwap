@@ -7,15 +7,15 @@ const Home = () => (
   
   <HomeContainer>
     <div>
-    <h1>Welcome to DonnySwap!<br/>👑v0.1.43</h1>
+    <h1>Welcome to DonnySwap!<br/>👑v0.1.431</h1>
     <a href="https://x.com/Donny_Marbles"><img src="./src/assets/MRBL_logo.png" alt="Token Logo" width="60" /></a>
     <h1>Current features</h1>
     
     <ol>
       <li><h2>🔁Swap Tokens</h2></li>
-      Swap ERC-20 - ERC-20 LPs <br/>
-      Swap Native KRST - ERC-20 LPs <br/>
-      Wrap / Unwrap KRST - WKREST <br/>
+      <b>Swap</b>: Native KREST (KRST) or ERC-20s <br/>
+      <b>Wrap</b>: KRST to WKREST <br/>
+      <b>Unwrap</b>: Unwrap WKREST to KRST <br/>
       <li><h2>💧Liquidity</h2></li>
       <b>Add Liquidity</b>: 
       Create ERC-20 - ERC-20 LPs <br/>
@@ -37,18 +37,18 @@ const Home = () => (
       <img src="./src/assets/MRBL_logo.png" alt="Token Logo" width="20" />Marbles (MRBL) Contract: <a href="https://krest.subscan.io/account/0xf5321b84aae2990FEC72FD57aF1B4a99B01EB928">Subscan</a> <br/>
       <img src="./src/assets/WKREST_logo.png" alt="Token Logo" width="20" />Wrapped KREST (WKREST) Contract: <a href="https://krest.subscan.io/account/0xDd11f4E48CE3A2B9043B2B0758ce704d3Fd191dc?tab=contract">Subscan</a> <br/>
       <h3>Backend Contracts:</h3>
-      UniswapV2Router02 Contract: <a href="https://krest.subscan.io/account/0xf441807ed1943925f6f887660c44d7eb2ecc17c2?tab=contract">Subscan</a> <br/>
-      SushiSwapFactory Contract: <a href="https://krest.subscan.io/account/0x23aAC8C182b2C2a2387868ee98C1544bF705c097?tab=contract">Subscan</a> <br/>
+      🦄UniswapV2Router02 Contract: <a href="https://krest.subscan.io/account/0xf441807ed1943925f6f887660c44d7eb2ecc17c2?tab=contract">Subscan</a> <br/>
+      🍣SushiSwapFactory Contract: <a href="https://krest.subscan.io/account/0x23aAC8C182b2C2a2387868ee98C1544bF705c097?tab=contract">Subscan</a> <br/>
       
-      Front-end Github Repo: <a href="https://github.com/DonnyMarbles/DonnySwap">Github</a><br/><br/>
+      🌎Front-end Github Repo: <a href="https://github.com/DonnyMarbles/DonnySwap">Github</a><br/><br/>
 
-      Recommended H160 (EVM) Wallet: 🦊 <a href="https://metamask.io/">Metamask</a> <br/>
-      Recommended SS58 (Substrate) Wallet: <a href="https://talisman.xyz/">Talisman</a><br/><br/>
+      🦊Suggested H160 (EVM) Wallet:  <a href="https://metamask.io/">Metamask</a> <br/>
+      ☯️Suggested SS58 (Substrate) Wallet:  <a href="https://talisman.xyz/">Talisman</a><br/><br/>
     
-      <h3>If using multiple Web3 Wallets such as Phantom and Metamask, disable one, or update
+      <h3>⚠️If using multiple Web3 Wallets such as Phantom and Metamask, disable one, or update
       'Default Wallet App' setting in Phantom from 'Always Ask' to 'Metamask'</h3>
 
-      KREST USD Price via CoinPaprika API (Thank you CoinPaprika!!!)
+      <img src="./src/assets/WKREST_logo.png" alt="Token Logo" width="20" /><a href="https://krest.subscan.io/account/0xDd11f4E48CE3A2B9043B2B0758ce704d3Fd191dc?tab=contract"></a> USD Price via CoinPaprika API <br/> (Thank you <a href="https://coinpaprika.com/">CoinPaprika</a>!!!)
     </ol>
   </div>
     </HomeContainer>
