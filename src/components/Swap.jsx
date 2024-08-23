@@ -299,8 +299,12 @@ const Swap = () => {
     }
   };
 
-  const isWrapOrUnwrap = (tokenA, tokenB) => (tokenA === 'KRST' && tokenB === WKRESTAddress && tokenB === 'KRST');
-  const isKRSTSwap = (tokenA, tokenB) => tokenA === 'KRST' || tokenB === 'KRST';
+  const isWrapOrUnwrap = (tokenA, tokenB) => {
+    return (
+      (tokenA === 'KRST' && tokenB === WKRESTAddress) ||
+      (tokenA === WKRESTAddress && tokenB === 'KRST')
+    );
+  };  const isKRSTSwap = (tokenA, tokenB) => tokenA === 'KRST' || tokenB === 'KRST';
 
   if (!provider) {
     return <div>Loading...</div>;
