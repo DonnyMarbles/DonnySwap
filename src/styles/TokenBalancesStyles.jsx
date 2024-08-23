@@ -16,7 +16,7 @@ export const StyledTable = styled.table`
   }
 
   th, td {
-    padding: 20px 15px;
+    padding: 25px 15px;
     text-align: center;
     border-bottom: 1px solid #ddd;
     vertical-align: middle; /* Ensures that content aligns vertically */

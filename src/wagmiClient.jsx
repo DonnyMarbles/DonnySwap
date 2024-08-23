@@ -39,7 +39,7 @@ const web3Modal = new Web3Modal({
 
 // Create wagmi client
 const wagmiClient = createClient({
-  autoConnect: true,
+  autoConnect: false,
   provider,
 });
 
