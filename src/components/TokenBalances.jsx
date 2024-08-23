@@ -210,7 +210,11 @@ const TokenBalances = () => {
                         <tr key={index}>
                             <LogoCell>
                                 <a
-                                    href={`https://krest.subscan.io/account/${token.tokenAddress}`}
+                                    href={
+                                        token.symbol === 'KRST'
+                                            ? `https://krest.subscan.io/account/${address}`
+                                            : `https://krest.subscan.io/account/${token.tokenAddress}`
+                                    }
                                     target="_blank"
                                     rel="noopener noreferrer"
                                 >
@@ -219,8 +223,11 @@ const TokenBalances = () => {
                             </LogoCell>
                             <td>
                                 <a
-                                    href={`https://krest.subscan.io/account/${token.tokenAddress}`}
-                                    target="_blank"
+                                    href={
+                                        token.symbol === 'KRST'
+                                            ? `https://krest.subscan.io/account/${address}`
+                                            : `https://krest.subscan.io/account/${token.tokenAddress}`
+                                    } target="_blank"
                                     rel="noopener noreferrer"
                                 >
                                     {token.symbol}
