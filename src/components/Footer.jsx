@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useContext } from 'react';
-import { Web3Context } from '../contexts/Web3Context';
+import { useProvider, useAccount, useNetwork } from 'wagmi';
 import { TokenContext } from '../contexts/TokenContext';
 import { ABIContext } from '../contexts/ABIContext';
 import { ethers } from 'ethers';
@@ -7,11 +7,12 @@ import WKRESTLogo from '../assets/WKREST_logo.png';
 import fetchKRESTPrice from '../fetchKRESTPrice';
 
 const Footer = () => {
-  const { provider, account, setKrestBalance } = useContext(Web3Context);
-  const { tokens } = useContext(TokenContext);
-  const { ERC20ABI } = useContext(ABIContext);
+  const provider = useProvider();
+  const { address: account, isConnected } = useAccount();
+  const { chain } = useNetwork();
+  const { tokens } = useContext(TokenContext); // Correctly use useContext to consume the TokenContext
+  const { ERC20ABI } = useContext(ABIContext); // Correctly use useContext to consume the ABIContext
   const [blockNumber, setBlockNumber] = useState(0);
-  const [connected, setConnected] = useState(false);
   const [krestPrice, setKrestPrice] = useState('0.0');
 
   useEffect(() => {
@@ -26,15 +27,10 @@ const Footer = () => {
     }
   }, [provider]);
 
-  useEffect(() => {
-    setConnected(!!account);
-  }, [account]);
-
   const getTokenBalance = async (tokenAddress) => {
     if (provider && account) {
       if (tokenAddress === 'KRST') {
         const balance = await provider.getBalance(account);
-        setKrestBalance(ethers.utils.formatUnits(balance, 18));
         return ethers.utils.formatUnits(balance, 18);
       } else {
         const contract = new ethers.Contract(tokenAddress, ERC20ABI, provider);
@@ -65,7 +61,7 @@ const Footer = () => {
     const updatePrice = async () => {
       const price = await fetchKRESTPrice();
       if (price) {
-        setKrestPrice(price.toFixed(6));  // Format price to two decimal places
+        setKrestPrice(price.toFixed(6));  // Format price to six decimal places
       } else {
         setKrestPrice('N/A');  // Handle case when price is not available
       }
@@ -73,13 +69,13 @@ const Footer = () => {
 
     updatePrice();
     updateBalances();
-  }, [blockNumber]);
+  }, [blockNumber, account, provider, tokens]);
 
   return (
     <footer style={{ display: 'flex', justifyContent: 'space-between', padding: '10px', backgroundColor: '#333', color: '#fff' }}>
       <div style={{ display: 'flex', alignItems: 'center' }}>
         <div style={{ marginRight: '10px' }}>
-          {connected ? (
+          {isConnected ? (
             <span style={{ color: 'green' }}>Connected</span>
           ) : (
             <span style={{ color: 'red' }}>Not Connected</span>

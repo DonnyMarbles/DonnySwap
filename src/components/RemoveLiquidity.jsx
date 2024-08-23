@@ -1,8 +1,8 @@
-import React, { useState, useContext, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import RemoveLiquidityTokens from './RemoveLiquidityTokens';
 import RemoveLiquidityKRST from './RemoveLiquidityKRST';
 import { ethers } from 'ethers';
-import { Web3Context } from '../contexts/Web3Context';
+import { useProvider, useSigner, useAccount } from 'wagmi';
 import { TokenContext } from '../contexts/TokenContext';
 import { ABIContext } from '../contexts/ABIContext';
 import {
@@ -13,9 +13,13 @@ import {
 } from '../styles/RemoveLiquidityStyles';
 
 const RemoveLiquidity = () => {
-  const { provider, account, signer } = useContext(Web3Context);
+  const provider = useProvider();
+  const { data: signer } = useSigner(); 
+  const { address: account } = useAccount(); 
+
   const { tokens, routerAddress } = useContext(TokenContext);
   const { UniswapV2Router02ABI, UniswapV2PairABI, UniswapV2FactoryABI, ERC20ABI, WrappedKRESTABI } = useContext(ABIContext);
+
   const [tokenA, setTokenIn] = useState('');
   const [tokenB, setTokenOut] = useState('');
   const [amountA, setAmountA] = useState('0.');
@@ -46,6 +50,7 @@ const RemoveLiquidity = () => {
       setError('');
     }
   };
+
   useEffect(() => {
     if (tokenA && account && tokenA !== "") {
       checkBalance(tokenA, setBalanceA);
@@ -84,8 +89,6 @@ const RemoveLiquidity = () => {
     }
   }, [amountA, tokenA, tokenB, blockNumber, allowanceLP, allowanceB]);
 
-
-
   const checkBalance = async (tokenSymbol, setBalance) => {
     try {
       let balance;
@@ -103,7 +106,6 @@ const RemoveLiquidity = () => {
       setBalance('0'); // Fallback to 0 in case of an error
     }
   };
-
 
   const checkIfNeedsApproval = async (tokenSymbolA, tokenSymbolB, amount, allowance, setNeedsApprovalLP) => {
     if (tokenSymbolA === "default" || tokenSymbolB === "default") {
@@ -143,15 +145,15 @@ const RemoveLiquidity = () => {
       const tokenAddressB = tokenSymbolB === 'KRST' ? wrappedKRESTAddress : getTokenAddress(tokenSymbolB);
 
       console.log(`Addresses: ${tokenAddressA}, ${tokenAddressB}`);      
-        const pairAddress = await getPairAddress(tokenAddressA, tokenAddressB);
-        console.log(`Pair Address: ${pairAddress}`);
+      const pairAddress = await getPairAddress(tokenAddressA, tokenAddressB);
+      console.log(`Pair Address: ${pairAddress}`);
 
-        const lpTokenContract = new ethers.Contract(pairAddress, UniswapV2PairABI, provider);
-        const allowance = await lpTokenContract.allowance(account, routerAddress);
-        setAllowance(allowance);
+      const lpTokenContract = new ethers.Contract(pairAddress, UniswapV2PairABI, provider);
+      const allowance = await lpTokenContract.allowance(account, routerAddress);
+      setAllowance(allowance);
 
-        console.log(`Allowance for LP ${tokenSymbolA}-${tokenSymbolB}: ${allowance.toString()}`);
-        checkIfNeedsApproval(tokenSymbolA, tokenSymbolB, amount, allowance, setNeedsApprovalLP);
+      console.log(`Allowance for LP ${tokenSymbolA}-${tokenSymbolB}: ${allowance.toString()}`);
+      checkIfNeedsApproval(tokenSymbolA, tokenSymbolB, amount, allowance, setNeedsApprovalLP);
       
     } catch (err) {
       console.error('Error fetching allowance:', err);
@@ -160,17 +162,17 @@ const RemoveLiquidity = () => {
     }
   };
 
-
   const getTokenAddress = (tokenSymbol) => {
     if (tokenSymbol === 'KRST') return null; // KRST is native token, no contract address
     const token = Object.keys(tokens).find(key => tokens[key].address === tokenSymbol);
     console.log(`Retrieved address for ${tokenSymbol}: ${token ? tokens[token].address : null}`);
     return token ? tokens[token].address : null;
   };
+
   const checkLPTokenBalance = async (tokenSymbolA, tokenSymbolB) => {
     try {
       // Substitute KRST with Wrapped KREST address
-      const wrappedKRESTAddress = '0xDd11f4E48CE3A2B9043B2B0758ce704d3Fd191dc'; // Replace with actual WKREST address
+      const wrappedKRESTAddress = '0xDd11f4E48CE3A2B9043B2B0758ce704d3Fd191dc';
 
       const tokenAddressA = tokenSymbolA === 'KRST' ? wrappedKRESTAddress : getTokenAddress(tokenSymbolA);
       const tokenAddressB = tokenSymbolB === 'KRST' ? wrappedKRESTAddress : getTokenAddress(tokenSymbolB);
@@ -231,6 +233,7 @@ const RemoveLiquidity = () => {
       setExchangeRate(null);
     }
   };
+
   const getPairAddress = async (tokenSymbolA, tokenSymbolB) => {
     // Handle cases where KRST and WKREST are paired together or tokenA equals tokenB
     const wrappedKrestAddress = "0xDd11f4E48CE3A2B9043B2B0758ce704d3Fd191dc";
@@ -255,6 +258,7 @@ const RemoveLiquidity = () => {
     // Get and return the pair address
     return await factoryContract.getPair(tokenAddressA, tokenAddressB);
   };
+
   const handleBalanceClickIn = () => {
     const currentBalance = parseFloat(lpBalance); // Ensure the balance is treated as a number
     setAmountA(currentBalance);
@@ -308,6 +312,7 @@ const RemoveLiquidity = () => {
     const token = Object.keys(tokens).find(key => tokens[key].decimals === tokenSymbol);
     return token ? tokens[token].decimals : 18;
   };
+
   if (!provider || !signer) {
     return <div>Loading...</div>;
   }

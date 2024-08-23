@@ -1,6 +1,6 @@
-import React, { useState, useContext, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { ethers } from 'ethers';
-import { Web3Context } from '../contexts/Web3Context';
+import { useAccount, useProvider, useSigner } from 'wagmi';
 import { TokenContext } from '../contexts/TokenContext';
 import { ABIContext } from '../contexts/ABIContext';
 import {
@@ -15,9 +15,13 @@ import SwapTokens from './SwapTokens';
 import SwapTokensKRST from './SwapTokensKRST';
 
 const Swap = () => {
-  const { provider, account, signer } = useContext(Web3Context);
+  const provider = useProvider();
+  const { address: account } = useAccount();
+  const { data: signer } = useSigner();
+  
   const { tokens, routerAddress } = useContext(TokenContext);
   const { UniswapV2Router02ABI, UniswapV2PairABI, UniswapV2FactoryABI, ERC20ABI, WrappedKRESTABI } = useContext(ABIContext);
+
   const [tokenA, setTokenIn] = useState('');
   const [tokenB, setTokenOut] = useState('');
   const [amountA, setAmountA] = useState('0.');
@@ -47,7 +51,6 @@ const Swap = () => {
       console.log(`Balance B set to: ${balanceB}`);
     }
   }, [tokenB]);
-  
 
   useEffect(() => {
     if (provider) {
@@ -101,6 +104,7 @@ const Swap = () => {
       setBalance('0.'); // Fallback to 0 in case of an error
     }
   };
+
   const getTokenAddress = (tokenSymbol) => {
     if (tokenSymbol === 'KRST') return null; // KRST is native token, no contract address
     const token = Object.keys(tokens).find(key => tokens[key].address === tokenSymbol);
@@ -178,7 +182,6 @@ const Swap = () => {
       setExchangeRate(null);
     }
   };
-  
 
   const checkAllowance = async (tokenSymbol, setAllowance, setNeedsApproval, amount) => {
     try {
@@ -204,6 +207,7 @@ const Swap = () => {
       setNeedsApproval(true);
     }
   };
+
   const checkIfNeedsApproval = (tokenSymbol, amount, allowance, setNeedsApproval) => {
     if (tokenSymbol === 'default') return; // Skip check if token is not selected
     try {
@@ -214,6 +218,7 @@ const Swap = () => {
       setNeedsApproval(true);
     }
   };
+
   const handleTokenInChange = async (e) => {
     const newTokenIn = e.target.value;
     if (newTokenIn !== null && tokenB !== null) {
@@ -228,11 +233,11 @@ const Swap = () => {
   const handleTokenOutChange = async (e) => {
     const newTokenOut = e.target.value;
     if (newTokenOut !== null && tokenA !== null) {
-    setTokenOut(newTokenOut);
-    if (newTokenOut === tokenA) {
-      setTokenIn(tokenB); // Swap values if they are the same
-    }
-    checkBalance(newTokenOut, setBalanceB);
+      setTokenOut(newTokenOut);
+      if (newTokenOut === tokenA) {
+        setTokenIn(tokenB); // Swap values if they are the same
+      }
+      checkBalance(newTokenOut, setBalanceB);
     }
   };
 

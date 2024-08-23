@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { Web3Context } from '../contexts/Web3Context';
+import { useAccount, useProvider, useNetwork } from 'wagmi';
 import { TokenContext } from '../contexts/TokenContext';
 import { ABIContext } from '../contexts/ABIContext';
 import { ethers } from 'ethers';
@@ -7,7 +7,9 @@ import { TableContainer, StyledTable, LogoCell, PercentageCell } from '../styles
 import { ApiPromise, WsProvider } from '@polkadot/api';
 
 const TokenBalances = () => {
-    const { provider, account } = useContext(Web3Context);
+    const { address } = useAccount();
+    const provider = useProvider();
+    const { chain } = useNetwork();
     const { tokens } = useContext(TokenContext);
     const { ERC20ABI, UniswapV2PairABI, UniswapV2FactoryABI } = useContext(ABIContext);
     const [blockNumber, setBlockNumber] = useState(0);
@@ -26,11 +28,11 @@ const TokenBalances = () => {
     }, [provider]);
 
     useEffect(() => {
-        if (provider && account) {
-            console.log('tokens object:', tokens); // Log the tokens object
+        if (provider && address && chain?.id === 2241) { // Ensure only runs on KREST network
+            console.log('tokens object:', tokens);
             fetchTokenData();
         }
-    }, [provider, account, blockNumber]);
+    }, [provider, address, blockNumber, chain]);
 
     const fetchKRESTCirculatingSupply = async () => {
         let wsProvider;
@@ -46,13 +48,11 @@ const TokenBalances = () => {
             console.error('Error fetching KREST circulating supply:', error);
             return ethers.BigNumber.from('0');
         } finally {
-            // Ensure the WebSocket provider is disconnected to prevent connection leaks
             if (wsProvider) {
                 await wsProvider.disconnect();
             }
         }
     };
-
 
     const fetchTokenData = async () => {
         const data = [];
@@ -92,7 +92,6 @@ const TokenBalances = () => {
                     const totalSupply = await pairContract.totalSupply();
                     const tokenReserve = token0 === tokenAddress ? reserves[0] : reserves[1];
 
-                    // Ensure tokenReserve and totalSupply are valid before proceeding
                     if (!lpBurnedBalance || !totalSupply || !tokenReserve) {
                         console.error(`Invalid values encountered for token ${symbol} at address ${tokenAddress}`);
                         continue;
@@ -126,40 +125,25 @@ const TokenBalances = () => {
                     const wkrestBurnedTokens = burnedTokens['WKREST'] || ethers.BigNumber.from(0);
                     circulatingSupply = circulatingSupply.sub(wkrestBurnedTokens);
 
-                    userBalance = await provider.getBalance(account);
+                    userBalance = await provider.getBalance(address);
                     totalBurnedTokens = wkrestBurnedTokens;
 
                     console.log(`User Balance of KRST: ${ethers.utils.formatUnits(userBalance, 18)}`);
                     console.log(`Total Burned Tokens (WKREST): ${ethers.utils.formatUnits(totalBurnedTokens, 18)}`);
 
-                    // Scale down total supply to prevent rounding issues
                     let scaledTotalSupply = Number(ethers.utils.formatUnits(totalSupply, 18));
                     let scaledBurnedTokens = Number(ethers.utils.formatUnits(totalBurnedTokens, 18));
                     
-                    console.log(`Scaled Total Supply of KRST: ${scaledTotalSupply}`);
-                    console.log(`Scaled Burned Tokens (WKREST): ${scaledBurnedTokens}`);
-
-                    // Calculate the burned percentage
                     burnedPercentage = (scaledBurnedTokens * 100) / scaledTotalSupply;
 
-                    // Log the calculated percentage before formatting
-                    console.log(`Raw Burned Percentage for KRST: ${burnedPercentage}`);
-
-                    // Check if the burned percentage is too small to display
                     if (burnedPercentage < 0.01) {
                         burnedPercentageFormatted = '<0.01';
                     } else {
                         burnedPercentageFormatted = burnedPercentage.toFixed(2);
                     }
 
-                    console.log(`Formatted Burned Percentage for KRST: ${burnedPercentageFormatted}%`);
-
-                    // Continue with userShare calculation
                     let scaledUserBalance = Number(ethers.utils.formatUnits(userBalance, 18));
                     userShare = (scaledUserBalance * 100) / scaledTotalSupply;
-
-                    // Log the calculated user share before formatting
-                    console.log(`Raw User Share for KRST: ${userShare}`);
 
                     if (userShare < 0.01) {
                         userShare = '<0.01';
@@ -167,30 +151,24 @@ const TokenBalances = () => {
                         userShare = userShare.toFixed(2);
                     }
 
-                    console.log(`Formatted User Share for KRST: ${userShare}%`);
-
                 } else {
                     const tokenContract = new ethers.Contract(tokenAddress, ERC20ABI, provider);
                     totalSupply = await tokenContract.totalSupply();
                     const burnedBalance = await tokenContract.balanceOf(nullAddress);
-                    userBalance = await tokenContract.balanceOf(account);
-                    // Ensure values are valid
+                    userBalance = await tokenContract.balanceOf(address);
+
                     if (!burnedBalance || !totalSupply) {
                         console.error(`Invalid values encountered for token ${symbol} at address ${tokenAddress}`);
                         continue;
                     }
 
                     totalBurnedTokens = burnedBalance.add(burnedTokens[symbol] || ethers.BigNumber.from(0));
-                    console.log(`Total Burned Tokens for ${symbol}: ${ethers.utils.formatUnits(totalBurnedTokens, 18)}`);
-                    console.log(`Circulating Supply (before sub) for ${symbol}: ${circulatingSupply} `);
                     circulatingSupply = totalSupply.sub(totalBurnedTokens);
                     burnedPercentage = totalBurnedTokens.mul(10000).mul(ethers.BigNumber.from(10).pow(18)).div(totalSupply);
                     burnedPercentageFormatted = Number(ethers.utils.formatUnits(burnedPercentage, 20)).toFixed(2);
-                    console.log(`Burned Percentage for ${symbol}: ${burnedPercentageFormatted}%`);
 
                     userShare = userBalance.mul(10000).div(totalSupply);
                     userShare = userShare < 0.01 ? '<0.01' : Number(ethers.utils.formatUnits(userShare, 2)).toFixed(2);
-                    console.log(`User Share for ${symbol}: ${userShare}%`);
                 }
 
                 data.push({

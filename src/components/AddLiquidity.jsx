@@ -1,8 +1,8 @@
-import React, { useState, useContext, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import AddLiquidityTokens from './AddLiquidityTokens';
 import AddLiquidityKRST from './AddLiquidityKRST';
 import { ethers } from 'ethers';
-import { Web3Context } from '../contexts/Web3Context';
+import { useAccount, useProvider, useSigner } from 'wagmi';
 import { TokenContext } from '../contexts/TokenContext';
 import { ABIContext } from '../contexts/ABIContext';
 import {
@@ -13,9 +13,12 @@ import {
 } from '../styles/AddLiquidityStyles';
 
 const AddLiquidity = () => {
-  const { provider, account, signer } = useContext(Web3Context);
+  const { address: account, isConnected } = useAccount();
+  const provider = useProvider();
+  const { data: signer } = useSigner();
   const { tokens, routerAddress } = useContext(TokenContext);
   const { UniswapV2Router02ABI, UniswapV2PairABI, UniswapV2FactoryABI, ERC20ABI, WrappedKRESTABI } = useContext(ABIContext);
+  
   const [tokenA, setTokenIn] = useState('');
   const [tokenB, setTokenOut] = useState('');
   const [amountA, setAmountA] = useState('0.');
@@ -44,6 +47,7 @@ const AddLiquidity = () => {
       setError('');
     }
   };
+
   useEffect(() => {
     if (tokenA && account) {
       checkBalance(tokenA, setBalanceA);
@@ -58,8 +62,6 @@ const AddLiquidity = () => {
     }
   }, [balanceB, tokenB, account]);
   
-  
-
   useEffect(() => {
     if (provider) {
       const updateBlockNumber = async () => {
@@ -113,9 +115,7 @@ const AddLiquidity = () => {
       setBalance('0'); // Fallback to 0 in case of an error
     }
   };
-  
 
-  
   const checkIfNeedsApproval = (tokenSymbol, amount, allowance, setNeedsApproval) => {
     if (tokenSymbol === "default") {
       return; // Skip check if token is not selected
@@ -136,6 +136,7 @@ const AddLiquidity = () => {
       setNeedsApproval(true);
     }
   };
+
   const checkAllowance = async (tokenSymbol, setAllowance, setNeedsApproval, amount) => {
     try {
       if (amount === 0) {
@@ -166,12 +167,14 @@ const AddLiquidity = () => {
       setNeedsApproval(true);
     }
   };
+
   const getTokenAddress = (tokenSymbol) => {
     if (tokenSymbol === 'KRST') return null; // KRST is native token, no contract address
     const token = Object.keys(tokens).find(key => tokens[key].address === tokenSymbol);
     console.log(`Retrieved address for ${tokenSymbol}: ${token ? tokens[token].address : null}`);
     return token ? tokens[token].address : null;
   };
+
   const checkLPTokenBalance = async (tokenSymbolA, tokenSymbolB) => {
     try {
       const pairAddress = await getPairAddress(tokenSymbolA, tokenSymbolB);
@@ -189,6 +192,7 @@ const AddLiquidity = () => {
       setNoLiquidity(false);
     }
   };
+
   const calculateExchangeRate = async (tokenSymbolA, tokenSymbolB) => {
     try {
       const wrappedKrestAddress = "0xDd11f4E48CE3A2B9043B2B0758ce704d3Fd191dc";
@@ -229,6 +233,7 @@ const AddLiquidity = () => {
       setExchangeRate(null);
     }
   };
+
   const getPairAddress = async (tokenSymbolA, tokenSymbolB) => {
     // Handle cases where KRST and WKREST are paired together or tokenA equals tokenB
     if (
@@ -255,6 +260,7 @@ const AddLiquidity = () => {
     // Get and return the pair address
     return await factoryContract.getPair(tokenAddressA, tokenAddressB);
   };
+
   const handleBalanceClickIn = () => {
     const currentBalance = parseFloat(balanceA); // Ensure the balance is treated as a number
     setAmountA(currentBalance); // Directly set the balance as the amount
@@ -306,6 +312,7 @@ const AddLiquidity = () => {
       setAmountB('0.');
     }
   };
+
   const handleTokenInChange = async (e) => {
     const newTokenIn = e.target.value;
     if (newTokenIn !== null && tokenB !== null) {
@@ -320,11 +327,11 @@ const AddLiquidity = () => {
   const handleTokenOutChange = async (e) => {
     const newTokenOut = e.target.value;
     if (newTokenOut !== null && tokenA !== null) {
-    setTokenOut(newTokenOut);
-    if (newTokenOut === tokenA) {
-      setTokenIn(tokenB); // Swap values if they are the same
-    }
-    checkBalance(newTokenOut, setBalanceB);
+      setTokenOut(newTokenOut);
+      if (newTokenOut === tokenA) {
+        setTokenIn(tokenB); // Swap values if they are the same
+      }
+      checkBalance(newTokenOut, setBalanceB);
     }
   };
   
@@ -344,7 +351,7 @@ const AddLiquidity = () => {
     <AddLiquidityContainer>
       <h2>Add Liquidity</h2>
       <AddLiquidityInputContainer>
-      <select value={tokenA} id={`tokenDropdownA-${tokenA}`} onChange={handleTokenInChange}>
+        <select value={tokenA} id={`tokenDropdownA-${tokenA}`} onChange={handleTokenInChange}>
           <option value="default">Select Token In</option>
           {Object.keys(tokens).map(key => (
             <option key={key} value={key}>{tokens[key].symbol}</option>
@@ -367,7 +374,7 @@ const AddLiquidity = () => {
         />
       </AddLiquidityInputContainer>
       <AddLiquidityInputContainer>
-      <select value={tokenB} id={`tokenDropdownB-${tokenB}`} onChange={handleTokenOutChange}>
+        <select value={tokenB} id={`tokenDropdownB-${tokenB}`} onChange={handleTokenOutChange}>
           <option value="default">Select Token Out</option>
           {Object.keys(tokens).map(key => (
             <option key={key} value={key}>{tokens[key].symbol}</option>
@@ -393,62 +400,64 @@ const AddLiquidity = () => {
         <NoLiquidityMessage>No Pair Found! Create your own</NoLiquidityMessage>
       )}
       {isKRSTPair ? (
-        <AddLiquidityKRST amountA={amountA}
-        amountB={amountB}
-        tokenA={tokenA}
-        tokenB={tokenB}
-        signer={signer}
-        routerAddress={routerAddress}
-        ERC20ABI={ERC20ABI}
-        UniswapV2Router02ABI={UniswapV2Router02ABI}
-        account={account}
-        tokens={tokens}
-        exchangeRate={exchangeRate}
-        getTokenDecimals={getTokenDecimals}
-        getTokenAddress={getTokenAddress}
-        setNeedsApprovalA={setNeedsApprovalA}
-        setNeedsApprovalB={setNeedsApprovalB}
-        needsApprovalA={needsApprovalA}
-        noLiquidity={noLiquidity}
-        needsApprovalB={needsApprovalB}
-        setAllowanceA={setAllowanceA}
-        setAllowanceB={setAllowanceB}
-        allowanceA={allowanceA}
-        allowanceB={allowanceB}
-        onTokenSelection={handleTokenSelection}
-        checkIfNeedsApproval={checkIfNeedsApproval}
-        lpBalance={lpBalance}
-        error={error}
-         />
+        <AddLiquidityKRST 
+          amountA={amountA}
+          amountB={amountB}
+          tokenA={tokenA}
+          tokenB={tokenB}
+          signer={signer}
+          routerAddress={routerAddress}
+          ERC20ABI={ERC20ABI}
+          UniswapV2Router02ABI={UniswapV2Router02ABI}
+          account={account}
+          tokens={tokens}
+          exchangeRate={exchangeRate}
+          getTokenDecimals={getTokenDecimals}
+          getTokenAddress={getTokenAddress}
+          setNeedsApprovalA={setNeedsApprovalA}
+          setNeedsApprovalB={setNeedsApprovalB}
+          needsApprovalA={needsApprovalA}
+          noLiquidity={noLiquidity}
+          needsApprovalB={needsApprovalB}
+          setAllowanceA={setAllowanceA}
+          setAllowanceB={setAllowanceB}
+          allowanceA={allowanceA}
+          allowanceB={allowanceB}
+          onTokenSelection={handleTokenSelection}
+          checkIfNeedsApproval={checkIfNeedsApproval}
+          lpBalance={lpBalance}
+          error={error}
+        />
       ) : (
-        <AddLiquidityTokens amountA={amountA}
-        amountB={amountB}
-        tokenA={tokenA}
-        tokenB={tokenB}
-        signer={signer}
-        routerAddress={routerAddress}
-        ERC20ABI={ERC20ABI}
-        UniswapV2Router02ABI={UniswapV2Router02ABI}
-        account={account}
-        tokens={tokens}
-        exchangeRate={exchangeRate}
-        getTokenDecimals={getTokenDecimals}
-        getTokenAddress={getTokenAddress}
-        setNeedsApprovalA={setNeedsApprovalA}
-        setNeedsApprovalB={setNeedsApprovalB}
-        needsApprovalA={needsApprovalA}
-        noLiquidity={noLiquidity}
-        needsApprovalB={needsApprovalB}
-        setAllowanceA={setAllowanceA}
-        allowanceA={allowanceA}
-        allowanceB={allowanceB}
-        onTokenSelection={handleTokenSelection}
-        checkIfNeedsApproval={checkIfNeedsApproval} 
-        lpBalance={lpBalance}
-        error={error}
+        <AddLiquidityTokens 
+          amountA={amountA}
+          amountB={amountB}
+          tokenA={tokenA}
+          tokenB={tokenB}
+          signer={signer}
+          routerAddress={routerAddress}
+          ERC20ABI={ERC20ABI}
+          UniswapV2Router02ABI={UniswapV2Router02ABI}
+          account={account}
+          tokens={tokens}
+          exchangeRate={exchangeRate}
+          getTokenDecimals={getTokenDecimals}
+          getTokenAddress={getTokenAddress}
+          setNeedsApprovalA={setNeedsApprovalA}
+          setNeedsApprovalB={setNeedsApprovalB}
+          needsApprovalA={needsApprovalA}
+          noLiquidity={noLiquidity}
+          needsApprovalB={needsApprovalB}
+          setAllowanceA={setAllowanceA}
+          allowanceA={allowanceA}
+          allowanceB={allowanceB}
+          onTokenSelection={handleTokenSelection}
+          checkIfNeedsApproval={checkIfNeedsApproval} 
+          lpBalance={lpBalance}
+          error={error}
         />
       )}
-  </AddLiquidityContainer>
+    </AddLiquidityContainer>
   );
 };
 

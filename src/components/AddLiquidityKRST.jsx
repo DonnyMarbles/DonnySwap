@@ -1,7 +1,6 @@
-import React, { useState, useContext, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ethers } from 'ethers';
-import { Web3Context } from '../contexts/Web3Context';
-import { ABIContext } from '../contexts/ABIContext';
+import { useSigner, useAccount } from 'wagmi';
 import {
   AddLiquidityContainer,
   AddLiquidityButton,
@@ -16,11 +15,9 @@ const AddLiquidityKRST = ({
   amountB,
   tokenA,
   tokenB,
-  signer,
   routerAddress,
   ERC20ABI,
   UniswapV2Router02ABI,
-  account,
   tokens,
   exchangeRate,
   getTokenDecimals,
@@ -36,7 +33,10 @@ const AddLiquidityKRST = ({
   allowanceA,
   allowanceB,
   error,
-  checkIfNeedsApproval }) => {
+  checkIfNeedsApproval
+}) => {
+  const { data: signer } = useSigner(); // Get the signer using wagmi's useSigner hook
+  const { address: account } = useAccount(); // Get the connected account using wagmi's useAccount hook
 
   const handleApprove = async (tokenSymbol, amount) => {
     try {
@@ -58,6 +58,7 @@ const AddLiquidityKRST = ({
       console.error('Error approving token:', err);
     }
   };
+
   const handleAddLiquidity = async () => {
     if (error) {
       return;
@@ -90,6 +91,7 @@ const AddLiquidityKRST = ({
       alert(`Error adding liquidity: ${err.message}`);
     }
   };
+
   const renderButton = () => {
     if (needsApprovalA && tokenA) {
       console.log(`Needs approval for tokenA: ${tokenA}`);
@@ -113,8 +115,8 @@ const AddLiquidityKRST = ({
       </AddLiquidityButton>
     );
   };
+
   return (
-    <>
     <AddLiquidityContainer>
       <LPTokenBalance>
         LP Token Balance: {lpBalance}
@@ -124,13 +126,12 @@ const AddLiquidityKRST = ({
       </ExchangeRate>
       {renderButton()}
       {noLiquidity && (
-                <NoLiquidityMessage>No Pair Found! Create your own</NoLiquidityMessage>
+        <NoLiquidityMessage>No Pair Found! Create your own</NoLiquidityMessage>
       )}
       {error && (
         <ErrorMessage>{error}</ErrorMessage>
       )}
     </AddLiquidityContainer>
-    </>
   );
 };
 
