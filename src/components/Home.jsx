@@ -7,7 +7,7 @@ const Home = () => (
   
   <HomeContainer>
     <div>
-    <h1>Welcome to DonnySwap!<br/>👑v0.1.420 😎</h1>
+    <h1>Welcome to DonnySwap!<br/>👑v0.1.421</h1>
     <a href="https://x.com/Donny_Marbles"><img src="./src/assets/MRBL_logo.png" alt="Token Logo" width="60" /></a>
     <h1>Current features</h1>
     
