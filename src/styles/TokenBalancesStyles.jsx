@@ -12,25 +12,25 @@ export const StyledTable = styled.table`
   margin-bottom: 20px;
 
   thead {
-    background: #1e1e1e;
+    background: #fcc375;
   }
 
   th, td {
     padding: 25px 15px;
-     background: #1e1e1e;
+     background: #fcc375;
     text-align: center;
-    border-bottom: 1px solid #ddd;
+    border-bottom: 1px solid #000;
     vertical-align: middle; /* Ensures that content aligns vertically */
     height: 60px; /* Set a fixed height for all table cells */
   }
 
   th {
-    background-color: #1e1e1e;
+    background-color: #dbaa65;
     font-weight: bold;
   }
 
   tr:nth-child(even) {
-    background-color: #1e1e1e;
+    background-color: #dbaa65;
   }
 
   img {

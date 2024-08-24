@@ -18,7 +18,7 @@ export const StyledTable = styled.table`
   th, td {
     padding: 25px 15px;
     text-align: flex;
-    border-bottom: 1px solid #ddd;
+    border-bottom: 1px solid #000;
      background: #fcc375;
   }
 
@@ -28,7 +28,7 @@ export const StyledTable = styled.table`
   }
 
   tr:nth-child(even) {
-    background-color: #1e1e1e;
+    background-color: #dbaa65;
   }
 
   img {
