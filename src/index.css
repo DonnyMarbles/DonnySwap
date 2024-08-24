@@ -11,6 +11,10 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  background-image: url("src/assets/ground_marbles.jpg");
+  background-repeat: no-repeat;
+  background-size: initial;
+  background-attachment: fixed;
 }
 
 a {
@@ -28,10 +32,7 @@ body {
   place-items: center;
   min-width: 320px;
   min-height: 100vh;
-  background-image: url("src/assets/ground_marbles.jpg");
-  background-repeat: no-repeat;
-  background-size: cover;
-  background-attachment: scroll;
+ 
 }
 
 h1 {

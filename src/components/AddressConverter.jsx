@@ -95,7 +95,7 @@ const AddressConverter= () => {
           </label>
           <Dropdown value={inputAddrFormat} onChange={handleInputFormatChange}>
             <option value="default">Select an Input</option>
-            <option value="h160">H160 (Ethereum)</option>
+            <option value="h160">H160 (EVM)</option>
           </Dropdown>
         </InputContainer>
 
