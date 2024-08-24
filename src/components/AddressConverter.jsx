@@ -7,8 +7,16 @@ import {convertH160ToSs58,
         encodePolkadotAddress, 
         validateSs58, 
         getPubKey} from './utils';
-import { ConverterContainer } from '../styles/AddressConverterStyles';
-
+        import {
+          ConverterContainer,
+          InputContainer,
+          Input,
+          Dropdown,
+          ConvertButton,
+          Error,
+          OutputAddress,
+          InfoText
+        } from '../styles/AddressConverterStyles';
 
 
 const AddressConverter= () => {
@@ -81,37 +89,49 @@ const AddressConverter= () => {
   return (
     <ConverterContainer>
       <form onSubmit={handleSubmit}>
-        <div className="form-group">
-          <label className='form-label'> <h3>Input address format: </h3></label>
-          <select value={inputAddrFormat} onChange={handleInputFormatChange}>
-            <option value="default"> Select an Input </option>
-            <option value={ADDRESS_FORMAT.h160}>H160 (Etheruem)</option>
-          </select>
-        </div>
+        <InputContainer className="form-group">
+          <label className='form-label'>
+            <h3>Input address format: </h3>
+          </label>
+          <Dropdown value={inputAddrFormat} onChange={handleInputFormatChange}>
+            <option value="default">Select an Input</option>
+            <option value="h160">H160 (Ethereum)</option>
+          </Dropdown>
+        </InputContainer>
 
-        <div className="form-group">
-          <label className='form-label'><h3>Address:</h3> </label>
-          <input 
+        <InputContainer className="form-group">
+          <label className='form-label'>
+            <h3>Address:</h3>
+          </label>
+          <Input
             type='text'
             value={inputAddress}
             onChange={handleInputAddrChange}
           />
-        </div>
+        </InputContainer>
         <br/>
-        <div className="form-group">
-          <button type='submit'>Convert {inputAddrFormat} Address</button>
-        </div>
+        <InputContainer className="form-group">
+          <ConvertButton type='submit'>
+            Convert {inputAddrFormat} Address
+          </ConvertButton>
+        </InputContainer>
         <br/><br/>
-        <div className='error'>
+        <Error className='error'>
           {error}
-        </div>
-
+        </Error>
       </form>
-      <div className='output-address' dangerouslySetInnerHTML={{__html: outputAddress}} />
-    <div><h2>To fund your H160 (EVM) address, convert your 0x address above;<br/>and send to SS58 (Substrate) address from 
-        Substrate-based Wallet* </h2><h3>*(Polkadot.js / Talisman / Nova / Subwallet)</h3></div>
+
+      <OutputAddress 
+        className='output-address' 
+        dangerouslySetInnerHTML={{ __html: outputAddress }} 
+      />
+
+      <InfoText>
+        <h2>To fund your H160 (EVM) address, convert your 0x address above;<br/>and send to SS58 (Substrate) address from Substrate-based Wallet* </h2>
+        <h3>*(Polkadot.js / Talisman / Nova / Subwallet)</h3>
+      </InfoText>
     </ConverterContainer>
   );
-}
+};
 
 export default AddressConverter;

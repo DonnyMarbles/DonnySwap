@@ -22,7 +22,7 @@ export const AddLiquidityInputContainer = styled.div`
     padding: 10px;
     margin: 5px 0;
     border-radius: 5px;
-    border: 1px solid #ccc;
+    border: 1px solid #000;
     background: #dbaa65;
     color: #000000;
   }
@@ -36,7 +36,7 @@ export const AddLiquidityButton = styled.button`
   background: #dbaa65;
   color: #000;
   cursor: pointer;
-
+  border: 1px solid #000;
   &:hover {
     background: #0056b3;
   }

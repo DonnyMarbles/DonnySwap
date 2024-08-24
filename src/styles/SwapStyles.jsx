@@ -36,7 +36,7 @@ export const SwapButton = styled.button`
   background: #dbaa65;
   color: #0000000;
   cursor: pointer;
-
+  border: 1px solid #000;
   &:hover {
     background: #0056b3;
   }
