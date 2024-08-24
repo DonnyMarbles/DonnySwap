@@ -30,7 +30,7 @@ body {
   min-height: 100vh;
   background-image: url("src/assets/ground_marbles.jpg");
   background-repeat: no-repeat;
-  background-size: 100%;
+  background-size: cover;
   background-attachment: scroll;
 }
 
