@@ -138,7 +138,7 @@ const FeesDashboard = () => {
     if (userAddress && provider) {
       fetchUserFees();
     }
-  }, [userAddress, provider]);
+  }, [provider]);
 
   // Calculate USD Values for Total Fees (All Users)
   useEffect(() => {

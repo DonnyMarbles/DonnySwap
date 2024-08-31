@@ -1,4 +1,5 @@
 import styled from 'styled-components';
+import React from 'react';
 
 export const FooterContainer = styled.footer`
   box-shadow: 0 4px 8px #000;
@@ -12,10 +13,29 @@ export const FooterContainer = styled.footer`
   margin-top: 20px;
 `;
 
-export const ConnectionStatus = styled.span`
+const StyledConnectionStatus = styled.span`
   margin-right: 10px;
-  color: ${(props) => (props.isConnected ? 'green' : 'red')};
+  
+  &.connected {
+    color: green;
+  }
+  
+  &.not-connected {
+    color: red;
+  }
 `;
+
+const ConnectionStatus = ({ isConnected }) => {
+  const className = isConnected ? 'connected' : 'not-connected';
+
+  return (
+    <StyledConnectionStatus className={className}>
+      {isConnected ? 'Connected' : 'Not Connected'}
+    </StyledConnectionStatus>
+  );
+};
+
+export default ConnectionStatus;
 
 export const LogoContainer = styled.div`
   display: flex;

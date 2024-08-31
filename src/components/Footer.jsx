@@ -5,7 +5,7 @@ import { ABIContext } from '../contexts/ABIContext';
 import { KRESTPriceContext } from '../contexts/KRESTPriceContext';
 import { ethers } from 'ethers';
 import WKRESTLogo from '../assets/WKREST_logo.png';
-import { FooterContainer, ConnectionStatus, LogoContainer, PriceContainer, BlockNumber } from '../styles/FooterStyles';
+import ConnectionStatus, { FooterContainer, LogoContainer, PriceContainer, BlockNumber } from '../styles/FooterStyles';
 
 const Footer = () => {
   const provider = useProvider();
@@ -68,9 +68,7 @@ const Footer = () => {
   return (
     <FooterContainer>
       <LogoContainer>
-        <ConnectionStatus isConnected={isConnected}>
-          {isConnected ? 'Connected' : 'Not Connected'}
-        </ConnectionStatus>
+      <ConnectionStatus isConnected={isConnected} />
         <img src={WKRESTLogo} alt="WKREST Logo" width="20" />
       </LogoContainer>
       <PriceContainer>
