@@ -1,6 +1,6 @@
 import styled from 'styled-components';
 
-export const TableContainer = styled.div`
+export const DashboardContainer = styled.div`
   width: 100%;
   overflow-x: auto;
   margin: 20px;
@@ -9,10 +9,10 @@ export const TableContainer = styled.div`
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 `;
 
-export const StyledTable = styled.table`
+export const Table = styled.table`
   width: 100%;
   border-collapse: collapse;
-
+  
   thead {
     background: #fcc375;
   }
@@ -21,7 +21,7 @@ export const StyledTable = styled.table`
   }
   th, td {
     padding: 25px 15px;
-     background: #fcc375;
+     background: #f9d39f;
     text-align: center;
     border-bottom: 1px solid #dbaa65;
     vertical-align: middle; /* Ensures that content aligns vertically */
@@ -34,7 +34,7 @@ export const StyledTable = styled.table`
   }
 
   tr:nth-child(even) {
-    background-color: #dbaa65;
+    background-color: #f9d39f;
   }
 
   img {
@@ -46,16 +46,27 @@ export const StyledTable = styled.table`
   }
 `;
 
-export const LogoCell = styled.td`
-  height: 60px; /* Match the height of other cells to ensure consistency */
-  padding: 0; /* Remove padding to prevent altering the row height */
-  text-align: center; /* Center the content within the cell */
-  vertical-align: middle; /* Ensure the image is vertically centered */
+export const TableRow = styled.tr`
+  &:nth-child(even) {
+    background-color: #f3d2a0;
+  }
+`;
+
+export const TableCell = styled.td`
+  text-align: left;
+  background-color: #f9d39f;
+
+`;
+
+export const TableHead = styled.th`
+  text-align: left;
+  background-color: #fcc375;
 `;
 
 export const LoadingSpinner = styled.div`
   margin: 50px auto;
   text-align: center;
+
   img {
     width: 50px;
     height: 50px;
@@ -82,8 +93,40 @@ export const LoadingSpinner = styled.div`
   }
 `;
 
-export const PercentageCell = styled.td`
-  color: ${props => props.percentage > 0 ? 'green' : 'red'};
-  text-align: right;
-  vertical-align: middle; /* Ensure the text is vertically centered */
+
+export const ErrorMessage = styled.div`
+  margin: 20px 0;
+  padding: 12px;
+  background-color: #f8d7da;
+  color: #721c24;
+  border: 1px solid #f5c6cb;
+  border-radius: 4px;
+  text-align: center;
+`;
+
+export const InfoContainer = styled.div`
+  display: flex;
+  justify-content: space-around;
+  margin-bottom: 20px;
+  padding: 10px;
+  background-color: #fcc375;
+  border-radius: 10px;
+`;
+
+export const InfoItem = styled.div`
+  font-size: 1.2rem;
+  color: #333;
+  font-weight: bold;
+  text-align: center;
+`;
+
+export const InfoLabel = styled.div`
+  font-size: 1rem;
+  color: #555;
+`;
+
+export const InfoValue = styled.div`
+  font-size: 1.5rem;
+  color: #000;
+  font-weight: bold;
 `;

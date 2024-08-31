@@ -3,7 +3,7 @@ import { useProvider, useAccount } from 'wagmi';
 import { TokenContext } from '../contexts/TokenContext';
 import { ABIContext } from '../contexts/ABIContext';
 import { ethers } from 'ethers';
-import { TableContainer, StyledTable, LogoCell, PercentageCell } from '../styles/TokenPairsStyles';
+import { TableContainer, StyledTable, LogoCell, PercentageCell, LoadingSpinner } from '../styles/TokenPairsStyles';
 
 const TokenPairs = () => {
     const provider = useProvider();
@@ -13,6 +13,7 @@ const TokenPairs = () => {
 
     const [pairs, setPairs] = useState([]);
     const [blockNumber, setBlockNumber] = useState(0);
+    const [loading, setLoading] = useState(true); // Added loading state
 
     useEffect(() => {
         if (provider) {
@@ -57,7 +58,6 @@ const TokenPairs = () => {
                 const tokenSymbolB = tokenBAddress === wrappedKrestAddress ? 'KRST' : tokens[tokenBAddress]?.symbol;
                 console.log(`Token A symbol: ${tokenSymbolA}`);
                 console.log(`Token B symbol: ${tokenSymbolB}`);
-
                 if (
                     (tokenSymbolA === 'KRST' && tokenSymbolB === 'WKREST') ||
                     (tokenSymbolA === 'WKREST' && tokenSymbolB === 'KRST') ||
@@ -66,25 +66,19 @@ const TokenPairs = () => {
                     console.warn(`Invalid pair skipped: ${tokenSymbolA}-${tokenSymbolB}`);
                     continue;
                 }
-
                 if (!tokenSymbolA || !tokenSymbolB) {
                     console.error(`Token symbol not found: ${tokenAAddress} or ${tokenBAddress}`);
                     continue;
                 }
-
                 const tokenALogo = tokens[tokenAAddress]?.logo || '';
                 const tokenBLogo = tokens[tokenBAddress]?.logo || '';
-
                 const reserves = await pairContract.getReserves();
                 const totalSupply = await pairContract.totalSupply();
                 const userBalance = await pairContract.balanceOf(account);
-
                 // Get the total balance that has been sent to the null address (burned)
                 const burnedBalance = await pairContract.balanceOf(nullAddress);
                 const burnedPercentage = (burnedBalance / totalSupply) * 100;
-
                 const userShare = (userBalance / totalSupply) * 100;
-
                 pairsData.push({
                     tokenASymbol: tokenSymbolA,
                     tokenBSymbol: tokenSymbolB,
@@ -101,95 +95,105 @@ const TokenPairs = () => {
                     burnedPercentage,  // Add the burned percentage to the data
                 });
             }
-
             console.log('Pairs data:', pairsData);
             setPairs(pairsData);
         } catch (error) {
             console.error('Error fetching pairs:', error);
+        } finally {
+            setLoading(false); // Stop loading
         }
     };
 
     return (
         <TableContainer>
-            <StyledTable>
-                <thead>
-                    <tr>
-                        <th>Pair's Logos</th>
-                        <th>Symbol</th>
-                        <th>Reserves</th>
-                        <th>Total LP Tokens</th>
-                        <th>Your LP Balance</th>
-                        <th>Your LP Share %</th>
-                        <th>Total LP Tokens 🔥</th>
-                        <th>% Total LP Tokens 🔥</th> {/* Updated column header for burned percentage */}
-                    </tr>
-                </thead>
-                <tbody>
-                    {pairs.map((pair, index) => (
-                        <tr key={index}>
-                            <LogoCell>
-                                <a
-                                    href={`https://krest.subscan.io/account/${pair.tokenAAddress}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                >
-                                    <img src={pair.tokenALogo} alt={pair.tokenASymbol} />
-                                </a>
-                                <a
-                                    href={`https://krest.subscan.io/account/${pair.tokenBAddress}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                >
-                                    <img src={pair.tokenBLogo} alt={pair.tokenBSymbol} />
-                                </a>
-                            </LogoCell>
-                            <td>
-                                <a
+            {loading ? (
+                <LoadingSpinner>
+                    <img src="src/assets/MRBL_logo.png" alt="Loading" />
+                    <p>Fetching your Marbles...</p>
+                </LoadingSpinner>
+            ) : (
+                <StyledTable>
+                    <thead>
+                        <tr>
+                            <th>Pair's Logos</th>
+                            <th>Symbol</th>
+                            <th>Reserves</th>
+                            <th>Total LP Tokens</th>
+                            <th>Your LP Balance</th>
+                            <th>Your LP Share %</th>
+                            <th>Total LP Tokens 🔥</th>
+                            <th>% Total LP Tokens 🔥</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {pairs.map((pair, index) => (
+                            <tr key={index}>
+                                <LogoCell>
+                                    <a
+                                        href={`https://krest.subscan.io/account/${pair.tokenAAddress}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                    >
+                                        <img src={pair.tokenALogo} alt={pair.tokenASymbol} />
+                                    </a>
+                                    <a
+                                        href={`https://krest.subscan.io/account/${pair.tokenBAddress}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                    >
+                                        <img src={pair.tokenBLogo} alt={pair.tokenBSymbol} />
+                                    </a>
+                                </LogoCell>
+                                <td>
+                                    <a
+                                        href={`https://krest.subscan.io/account/${pair.pairAddress}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                    >
+                                        {pair.tokenASymbol}/{pair.tokenBSymbol}
+                                    </a>
+                                </td>
+                                <td>
+                                    {Number(ethers.utils.formatUnits(pair.reserves[0], 18)).toFixed(6)} <a
+                                        href={`https://krest.subscan.io/account/${pair.tokenAAddress}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                    > {pair.tokenASymbol} </a> / {Number(ethers.utils.formatUnits(pair.reserves[1], 18)).toFixed(6)} <a
+                                        href={`https://krest.subscan.io/account/${pair.tokenBAddress}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                    > {pair.tokenBSymbol} </a>
+                                </td>
+                                <td>{Number(ethers.utils.formatUnits(pair.totalSupply, 18)).toFixed(6)} <a
                                     href={`https://krest.subscan.io/account/${pair.pairAddress}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                 >
                                     {pair.tokenASymbol}/{pair.tokenBSymbol}
-                                </a>
-                            </td>
-                            <td>
-                                {Number(ethers.utils.formatUnits(pair.reserves[0], 18)).toFixed(6)} <a
-                                    href={`https://krest.subscan.io/account/${pair.tokenAAddress}`}
+                                </a></td>
+                                <td>{Number(ethers.utils.formatUnits(pair.userBalance, 18)).toFixed(6)} <a
+                                    href={`https://krest.subscan.io/account/${pair.pairAddress}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                > {pair.tokenASymbol} </a> / {Number(ethers.utils.formatUnits(pair.reserves[1], 18)).toFixed(6)} <a
-                                    href={`https://krest.subscan.io/account/${pair.tokenBAddress}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                > {pair.tokenBSymbol} </a>
-                            </td>
-                            <td>{Number(ethers.utils.formatUnits(pair.totalSupply, 18)).toFixed(6)} <a
-                                href={`https://krest.subscan.io/account/${pair.pairAddress}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                            >
-                                {pair.tokenASymbol}/{pair.tokenBSymbol}
-                            </a></td>
-                            <td>{Number(ethers.utils.formatUnits(pair.userBalance, 18)).toFixed(6)} <a
-                                href={`https://krest.subscan.io/account/${pair.pairAddress}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                            >
-                                {pair.tokenASymbol}/{pair.tokenBSymbol}
-                            </a></td>
-                            <PercentageCell percentage={pair.userShare}>
-                                {pair.userShare.toFixed(2)}%
-                            </PercentageCell>
-                            <td>
-                                {Number(ethers.utils.formatUnits(pair.burnedBalance, 18)).toFixed(6)}
-                            </td>
-                            <PercentageCell percentage={pair.burnedPercentage}>
-                                {pair.burnedPercentage.toFixed(2)}%
-                            </PercentageCell>
-                        </tr>
-                    ))}
-                </tbody>
-            </StyledTable>
+                                >
+                                    {pair.tokenASymbol}/{pair.tokenBSymbol}
+                                </a></td>
+                                <PercentageCell percentage={pair.userShare}>
+                                    {pair.userShare.toFixed(2)}%
+                                </PercentageCell>
+                                <td>
+                                    {Number(ethers.utils.formatUnits(pair.burnedBalance, 18)).toFixed(6)}
+                                </td>
+                                <PercentageCell percentage={pair.burnedPercentage}>
+                                    {pair.burnedPercentage.toFixed(2)}%
+                                </PercentageCell>
+                            </tr>
+                        ))}
+                  
+                    </tbody>
+                     
+                </StyledTable>
+            )} 
         </TableContainer>
     );
 };

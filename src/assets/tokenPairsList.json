@@ -1,0 +1,11 @@
+{
+    "0x9C2d342C54e081b95f0Dcd94a657dCeb827377bE": {
+        "symbol": "WKREST-MRBL",
+        "address": "0x9C2d342C54e081b95f0Dcd94a657dCeb827377bE",
+        "decimals": 18,
+        "token1_address": "0xDd11f4E48CE3A2B9043B2B0758ce704d3Fd191dc",
+        "token2_address": "0xf5321b84aae2990FEC72FD57aF1B4a99B01EB928",
+        "logo1": "src/assets/WKREST_logo.png",
+        "logo2": "src/assets/MRBL_logo.png"
+    }
+}

@@ -7,6 +7,8 @@ export const NavBarContainer = styled.div`
   padding: 10px 20px;
   background: #dbaa65;
   width: 100%;
+  box-shadow: 0 4px 8px #000;
+  border-radius: 10px;
 `;
 
 export const NavLinks = styled.div`

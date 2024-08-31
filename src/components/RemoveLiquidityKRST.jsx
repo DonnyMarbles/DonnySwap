@@ -113,12 +113,8 @@ const RemoveLiquidityKRST = ({
       if (!pairAddress || pairAddress === ethers.constants.AddressZero) throw new Error('Pair address not found');
 
       const pairContract = new ethers.Contract(pairAddress, UniswapV2PairABI, signer);
-      let amountParsed;
-      if (amount < 0.01) {
-          amountParsed = ethers.utils.parseUnits('0.01', 18);
-      } else {
-          amountParsed = ethers.utils.parseUnits(amount.toString(), 18);
-      }      console.log(`Approving ${amountParsed.toString()} of LP tokens for ${tokenSymbolA}-${tokenSymbolB}`);
+      let amountParsed = ethers.utils.parseUnits(amount.toString(), 18);
+      console.log(`Approving ${amountParsed.toString()} of LP tokens for ${tokenSymbolA}-${tokenSymbolB}`);
 
       const tx = await pairContract.approve(routerAddress, amountParsed);
       await tx.wait();

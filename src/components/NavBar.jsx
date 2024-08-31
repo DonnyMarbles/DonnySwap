@@ -8,20 +8,30 @@ import CustomConnectButton from './CustomConnectButton';
 const NavBar = () => {
   const [dropdownVisibleLiquidity, setDropdownVisibleLiquidity] = useState(false);
   const [dropdownVisibleBalances, setDropdownVisibleBalances] = useState(false);
+  const [dropdownVisibleNFTs, setDropdownVisibleNFTs] = useState(false);
 
   const toggleDropdownLiquidity = () => {
     setDropdownVisibleLiquidity((prev) => !prev);
-    setDropdownVisibleBalances(false); // Close other dropdown
+    setDropdownVisibleBalances(false); // Close other dropdowns
+    setDropdownVisibleNFTs(false);
   };
 
   const toggleDropdownBalances = () => {
     setDropdownVisibleBalances((prev) => !prev);
-    setDropdownVisibleLiquidity(false); // Close other dropdown
+    setDropdownVisibleLiquidity(false); // Close other dropdowns
+    setDropdownVisibleNFTs(false);
+  };
+
+  const toggleDropdownNFTs = () => {
+    setDropdownVisibleNFTs((prev) => !prev);
+    setDropdownVisibleLiquidity(false); // Close other dropdowns
+    setDropdownVisibleBalances(false);
   };
 
   const closeDropdowns = () => {
     setDropdownVisibleLiquidity(false);
     setDropdownVisibleBalances(false);
+    setDropdownVisibleNFTs(false);
   };
 
   return (
@@ -52,6 +62,18 @@ const NavBar = () => {
           )}
         </DropdownContainer>
         <Link to="/address-converter" onClick={closeDropdowns}>Address Converter</Link>
+        <DropdownContainer>
+          <DropdownButton onClick={toggleDropdownNFTs}>
+            DSFO NFTs
+          </DropdownButton>
+          {dropdownVisibleNFTs && (
+            <DropdownContent>
+              <Link to="/mint-DFSO-NFTs" onClick={closeDropdowns}>Mint DFSO NFTs</Link>
+              <Link to="/fee-dashboard" onClick={closeDropdowns}>DEX Fee Dashboard</Link>
+            </DropdownContent>
+          )}
+        </DropdownContainer>
+        
       </NavLinks>
 
       <div style={{ position: 'relative' }}>

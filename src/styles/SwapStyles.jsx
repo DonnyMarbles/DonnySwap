@@ -4,7 +4,10 @@ export const SwapContainer = styled.div`
   display: inline-flex;
   flex-direction: column;
   align-items: center;
-  margin: 20px;
+  background-color: #fcc375;
+  margin-top: 20px;
+  margin-bottom: 20px;
+  box-shadow: 0 4px 8px #000;
   padding: 20px;
   background: #fcc375;
   border-radius: 10px;
@@ -88,5 +91,34 @@ export const SlippageInputContainer = styled.div`
     border: 1px solid #000000;
     background: #dbaa65;
     color: #000000;
+  }
+`;
+
+export const LoadingSpinner = styled.div`
+  margin: 50px auto;
+  text-align: center;
+  img {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    display: block;
+    margin: 0 auto;
+  }
+
+  @keyframes spin {
+    0% {
+      transform: rotate(0deg);
+    }
+    100% {
+      transform: rotate(360deg);
+    }
+  }
+
+  p {
+    margin-top: 10px;
+    font-size: 1.2rem;
+    color: #333;
+    font-weight: bold;
   }
 `;

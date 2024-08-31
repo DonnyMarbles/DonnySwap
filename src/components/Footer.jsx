@@ -2,19 +2,23 @@ import React, { useEffect, useState, useContext } from 'react';
 import { useProvider, useAccount, useNetwork } from 'wagmi';
 import { TokenContext } from '../contexts/TokenContext';
 import { ABIContext } from '../contexts/ABIContext';
+import { KRESTPriceContext } from '../contexts/KRESTPriceContext';
 import { ethers } from 'ethers';
 import WKRESTLogo from '../assets/WKREST_logo.png';
-import fetchKRESTPrice from '../fetchKRESTPrice';
+import { FooterContainer, ConnectionStatus, LogoContainer, PriceContainer, BlockNumber } from '../styles/FooterStyles';
 
 const Footer = () => {
   const provider = useProvider();
   const { address: account, isConnected } = useAccount();
   const { chain } = useNetwork();
-  const { tokens } = useContext(TokenContext); // Correctly use useContext to consume the TokenContext
-  const { ERC20ABI } = useContext(ABIContext); // Correctly use useContext to consume the ABIContext
+  const { tokens } = useContext(TokenContext);
+  const { ERC20ABI } = useContext(ABIContext);
+  const { krestPrice, loading, error } = useContext(KRESTPriceContext);
   const [blockNumber, setBlockNumber] = useState(0);
-  const [krestPrice, setKrestPrice] = useState('0.0');
 
+  function toFixedDown(value, decimals) {
+    return (Math.floor(value * Math.pow(10, decimals)) / Math.pow(10, decimals)).toFixed(decimals);
+  }
   useEffect(() => {
     if (provider) {
       const updateBlockNumber = async () => {
@@ -48,44 +52,32 @@ const Footer = () => {
         const element = document.getElementById(`balance-${address}`);
         if (element) {
           const balance = await getTokenBalance(address);
-          element.innerText = ` ${balance}`;
+          element.innerText = ` ${toFixedDown(parseFloat(balance), 8)}`;
         }
       }
       const krstBalanceElement = document.getElementById('balance-KRST');
       if (krstBalanceElement) {
         const balance = await getTokenBalance('KRST');
-        krstBalanceElement.innerText = ` ${balance}`;
+        krstBalanceElement.innerText = ` ${toFixedDown(parseFloat(balance), 8)}`;
       }
     };
 
-    const updatePrice = async () => {
-      const price = await fetchKRESTPrice();
-      if (price) {
-        setKrestPrice(price.toFixed(6));  // Format price to six decimal places
-      } else {
-        setKrestPrice('N/A');  // Handle case when price is not available
-      }
-    };
-
-    updatePrice();
     updateBalances();
   }, [blockNumber, account, provider, tokens]);
 
   return (
-    <footer style={{ display: 'flex', justifyContent: 'space-between', padding: '10px', backgroundColor: '#fcc375', color: '#000000' }}>
-      <div style={{ display: 'flex', alignItems: 'center' }}>
-        <div style={{ marginRight: '10px' }}>
-          {isConnected ? (
-            <span style={{ color: 'green' }}>Connected</span>
-          ) : (
-            <span style={{ color: 'red' }}>Not Connected</span>
-          )}
-        </div>
+    <FooterContainer>
+      <LogoContainer>
+        <ConnectionStatus isConnected={isConnected}>
+          {isConnected ? 'Connected' : 'Not Connected'}
+        </ConnectionStatus>
         <img src={WKRESTLogo} alt="WKREST Logo" width="20" />
-      </div>
-      <div>1 <img src={WKRESTLogo} alt="WKREST Logo" width="15" /> KREST : ${krestPrice} USD</div> {/* Display the KREST price */}
-      <div>Block: {blockNumber}</div>
-    </footer>
+      </LogoContainer>
+      <PriceContainer>
+        1 <img src={WKRESTLogo} alt="WKREST Logo" width="15" /> KREST : ${loading ? 'Loading...' : error ? 'N/A' : krestPrice.toFixed(6)} USD
+      </PriceContainer>
+      <BlockNumber>Block: {blockNumber}</BlockNumber>
+    </FooterContainer>
   );
 };
 

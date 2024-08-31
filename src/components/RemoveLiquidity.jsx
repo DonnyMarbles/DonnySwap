@@ -89,6 +89,10 @@ const RemoveLiquidity = () => {
     }
   }, [amountA, tokenA, tokenB, blockNumber, allowanceLP, allowanceB]);
 
+  function toFixedDown(value, decimals) {
+    return (Math.floor(value * Math.pow(10, decimals)) / Math.pow(10, decimals)).toFixed(decimals);
+  }
+
   const checkBalance = async (tokenSymbol, setBalance) => {
     try {
       let balance;
@@ -100,7 +104,7 @@ const RemoveLiquidity = () => {
       }
       const formattedBalance = ethers.utils.formatUnits(balance, 18);
       console.log(`Fetched balance for ${tokenSymbol}:`, formattedBalance); // Debugging log
-      setBalance(formattedBalance); // Set the balance in the state
+      setBalance(toFixedDown(parseFloat(formattedBalance), 8)); // Set the balance in the state
     } catch (error) {
       console.error('Error fetching balance:', error);
       setBalance('0'); // Fallback to 0 in case of an error
@@ -124,9 +128,10 @@ const RemoveLiquidity = () => {
     }
     const decimals = getTokenDecimals(pairAddress);
     try {
-      const minAmount = 0.01;
-      const amountToCheck = parseFloat(amount) < minAmount ? minAmount : parseFloat(amount);
-      const amountParsed = ethers.utils.parseUnits(amountToCheck.toString(), decimals);      console.log(`Amount parsed for LP tokens of ${adjustedTokenSymbolA}-${adjustedTokenSymbolB}: ${amountParsed}, Allowance: ${allowance}`);
+
+      const amountToCheck = parseFloat(amount);
+      const amountParsed = ethers.utils.parseUnits(amountToCheck.toString(), decimals);      
+      console.log(`Amount parsed for LP tokens of ${adjustedTokenSymbolA}-${adjustedTokenSymbolB}: ${amountParsed}, Allowance: ${allowance}`);
       setNeedsApprovalLP(amountParsed.gt(allowance));
     } catch (err) {
       console.error(`Error parsing amount for LP tokens of ${adjustedTokenSymbolA}-${adjustedTokenSymbolB}:`, err);
@@ -186,7 +191,7 @@ const RemoveLiquidity = () => {
 
       const pairContract = new ethers.Contract(pairAddress, UniswapV2PairABI, provider);
       const balance = await pairContract.balanceOf(account);
-      setLpBalance(ethers.utils.formatUnits(balance, 18));
+      setLpBalance(toFixedDown(parseFloat(ethers.utils.formatUnits(balance, 18)), 8));
       setNoLiquidity(false);
     } catch (err) {
       console.error('Error fetching LP token balance:', err);

@@ -41,14 +41,14 @@ const Swap = () => {
   useEffect(() => {
     if (tokenA && account) {
       checkBalance(tokenA, setBalanceA);
-      console.log(`Balance A set to: ${balanceA}`);
+      console.log(`Balance A set to: ${parseFloat(balanceA)}`);
     }
   }, [tokenA]);
 
   useEffect(() => {
     if (tokenB && account) {
       checkBalance(tokenB, setBalanceB);
-      console.log(`Balance B set to: ${balanceB}`);
+      console.log(`Balance B set to: ${parseFloat(balanceB)}`);
     }
   }, [tokenB]);
 
@@ -87,6 +87,9 @@ const Swap = () => {
     }
   }, [amountA, amountB, tokenA, tokenB, allowanceA, allowanceB, blockNumber]);
 
+  function toFixedDown(value, decimals) {
+    return (Math.floor(value * Math.pow(10, decimals)) / Math.pow(10, decimals)).toFixed(decimals);
+  }
   const checkBalance = async (tokenSymbol, setBalance) => {
     try {
       let balance;
@@ -96,7 +99,7 @@ const Swap = () => {
         const contract = new ethers.Contract(tokens[tokenSymbol].address, ERC20ABI, provider);
         balance = await contract.balanceOf(account);
       }
-      const formattedBalance = ethers.utils.formatUnits(balance, 18);
+      const formattedBalance = toFixedDown(parseFloat(ethers.utils.formatUnits(balance, 18)), 8);
       console.log(`Fetched balance for ${tokenSymbol}:`, formattedBalance); // Debugging log
       setBalance(formattedBalance); // Set the balance in the state
     } catch (error) {
@@ -212,9 +215,7 @@ const Swap = () => {
     if (tokenSymbol === 'default' || amount === '.') return; // Skip check if token is not selected
 
     try {
-      // Convert the amount to BN and ensure it's at least 0.01
-      const minAmount = 0.01;
-      const amountToCheck = parseFloat(amount) < minAmount ? minAmount : parseFloat(amount);
+      const amountToCheck = parseFloat(amount);
       const amountParsed = ethers.utils.parseUnits(amountToCheck.toString(), getTokenDecimals(tokenSymbol));
       setNeedsApproval(amountParsed.gt(allowance));
     } catch (err) {
@@ -252,18 +253,18 @@ const Swap = () => {
     if (exchangeRate && currentBalance) {
       const newAmountB = currentBalance * exchangeRate;
       setAmountB(newAmountB);
-      handleAmountBChange(newAmountB);
+      handleAmountBChange(parseFloat(newAmountB).toFixed(8));
     }
   };
 
   const handleBalanceClickOut = () => {
     const currentBalance = parseFloat(balanceB); // Ensure the balance is treated as a number
-    setAmountB(currentBalance); // Directly set the balance as the amount
-    console.log('handleBalanceClickOut set amountB to:', currentBalance); // Debugging log
+    setAmountB(toFixedDown(currentBalance, 8)); // Directly set the balance as the amount
+    console.log('handleBalanceClickOut set amountB to:', toFixedDown(currentBalance, 8)); // Debugging log
     if (exchangeRate && currentBalance) {
       const newAmountA = currentBalance / exchangeRate;
       setAmountA(newAmountA);
-      handleAmountAChange(newAmountA);
+      handleAmountAChange(parseFloat(newAmountA).toFixed(8));
     }
   };
 
@@ -276,7 +277,7 @@ const Swap = () => {
       }
       if (exchangeRate && numValue) {
         const newAmountA = numValue * exchangeRate;
-        setAmountB(newAmountA);
+        setAmountB(parseFloat(newAmountA).toFixed(8));
       }
     } else {
       setAmountA('0.');
@@ -292,7 +293,7 @@ const Swap = () => {
       }
       if (exchangeRate && numValue) {
         const newAmountB = numValue / exchangeRate;
-        setAmountA(newAmountB);
+        setAmountA(parseFloat(newAmountB).toFixed(8));
       }
     } else {
       setAmountB('0.');
@@ -323,7 +324,7 @@ const Swap = () => {
         {tokenA && tokens[tokenA] && (
           <TokenInfo>
             <img src={tokens[tokenA].logo} alt="Token Logo" width="20" />
-            Balance:<a><span onClick={handleBalanceClickIn} id={`balance-${tokenA}`}> {balanceA}</span></a>
+            Balance:<a><span onClick={handleBalanceClickIn} id={`balance-${tokenA}`}> {toFixedDown(parseFloat(balanceA), 8)}</span></a>
           </TokenInfo>
         )}
         <input
@@ -346,7 +347,7 @@ const Swap = () => {
         {tokenB && tokens[tokenB] && (
           <TokenInfo>
             <img src={tokens[tokenB].logo} alt="Token Logo" width="20" />
-            Balance:<a><span onClick={handleBalanceClickOut} id={`balance-${tokenB}`}>{balanceB}</span></a>
+            Balance:<a><span onClick={handleBalanceClickOut} id={`balance-${tokenB}`}>{toFixedDown(parseFloat(balanceB), 8)}</span></a>
           </TokenInfo>
         )}
         <input

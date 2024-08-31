@@ -3,7 +3,7 @@ import { useAccount, useProvider, useNetwork } from 'wagmi';
 import { TokenContext } from '../contexts/TokenContext';
 import { ABIContext } from '../contexts/ABIContext';
 import { ethers } from 'ethers';
-import { TableContainer, StyledTable, LogoCell, PercentageCell } from '../styles/TokenBalancesStyles';
+import { TableContainer, StyledTable, LogoCell, PercentageCell, LoadingSpinner } from '../styles/TokenBalancesStyles';
 import { ApiPromise, WsProvider } from '@polkadot/api';
 
 const TokenBalances = () => {
@@ -14,6 +14,7 @@ const TokenBalances = () => {
     const { ERC20ABI, UniswapV2PairABI, UniswapV2FactoryABI } = useContext(ABIContext);
     const [blockNumber, setBlockNumber] = useState(0);
     const [tokenData, setTokenData] = useState([]);
+    const [loading, setLoading] = useState(true); // Added loading state
 
     useEffect(() => {
         if (provider) {
@@ -184,6 +185,8 @@ const TokenBalances = () => {
                 });
             } catch (error) {
                 console.error(`Error fetching data for token ${symbol} at address ${tokenAddress}:`, error);
+            } finally {
+                setLoading(false); // Stop loading
             }
         }
 
@@ -192,6 +195,12 @@ const TokenBalances = () => {
 
     return (
         <TableContainer>
+            {loading ? (
+                <LoadingSpinner>
+                    <img src="src/assets/MRBL_logo.png" alt="Loading" />
+                    <p>Fetching your Marbles...</p>
+                </LoadingSpinner>
+            ) : (
             <StyledTable>
                 <thead>
                     <tr>
@@ -247,6 +256,7 @@ const TokenBalances = () => {
                     ))}
                 </tbody>
             </StyledTable>
+             )} 
         </TableContainer>
     );
 };

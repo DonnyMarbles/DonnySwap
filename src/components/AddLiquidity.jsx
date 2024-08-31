@@ -53,14 +53,14 @@ const AddLiquidity = () => {
       checkBalance(tokenA, setBalanceA);
       console.log(`Balance A set to: ${balanceA}`);
     }
-  }, [balanceA, tokenA, account]);
+  }, [balanceA, tokenA, account, blockNumber]);
   
   useEffect(() => {
     if (tokenB && account) {
       checkBalance(tokenB, setBalanceB);
       console.log(`Balance B set to: ${balanceB}`);
     }
-  }, [balanceB, tokenB, account]);
+  }, [balanceB, tokenB, account, blockNumber]);
   
   useEffect(() => {
     if (provider) {
@@ -97,6 +97,9 @@ const AddLiquidity = () => {
       checkIfNeedsApproval(tokenB, amountB, allowanceB, setNeedsApprovalB);
     }
   }, [amountA, amountB, tokenA, tokenB, allowanceA, allowanceB, blockNumber]);
+  function toFixedDown(value, decimals) {
+    return (Math.floor(value * Math.pow(10, decimals)) / Math.pow(10, decimals)).toFixed(decimals);
+  }
 
   const checkBalance = async (tokenSymbol, setBalance) => {
     try {
@@ -109,7 +112,7 @@ const AddLiquidity = () => {
       }
       const formattedBalance = ethers.utils.formatUnits(balance, 18);
       console.log(`Fetched balance for ${tokenSymbol}:`, formattedBalance); // Debugging log
-      setBalance(formattedBalance); // Set the balance in the state
+      setBalance(toFixedDown(parseFloat(formattedBalance), 8)); // Set the balance in the state
     } catch (error) {
       console.error('Error fetching balance:', error);
       setBalance('0'); // Fallback to 0 in case of an error
@@ -128,8 +131,8 @@ const AddLiquidity = () => {
     }
     const decimals = getTokenDecimals(tokenSymbol);
     try {
-      const minAmount = 0.01;
-      const amountToCheck = parseFloat(amount) < minAmount ? minAmount : parseFloat(amount);
+      
+      const amountToCheck = parseFloat(amount);
       const amountParsed = ethers.utils.parseUnits(amountToCheck.toString(), decimals);
       console.log(`Amount parsed for ${tokenSymbol}: ${amountParsed}, Allowance: ${allowance}`);
       setNeedsApproval(amountParsed.gt(allowance));
@@ -263,7 +266,7 @@ const AddLiquidity = () => {
     console.log('handleBalanceClickIn set amountA to:', currentBalance); // Debugging log
     if (exchangeRate && currentBalance) {
       const newAmountB = currentBalance * exchangeRate;
-      setAmountB(newAmountB);
+      setAmountB(toFixedDown(parseFloat(newAmountB), 8));
     }
   };
   
@@ -273,7 +276,7 @@ const AddLiquidity = () => {
     console.log('handleBalanceClickOut set amountB to:', currentBalance); // Debugging log
     if (exchangeRate && currentBalance) {
       const newAmountA = currentBalance / exchangeRate;
-      setAmountA(newAmountA);
+      setAmountA(toFixedDown(parseFloat(newAmountA), 8));
     }
   };
   
@@ -286,7 +289,7 @@ const AddLiquidity = () => {
       }
       if (exchangeRate && numValue) {
         const newAmountA = numValue * exchangeRate;
-        setAmountB(newAmountA);
+        setAmountB(toFixedDown(parseFloat(newAmountA), 8));
       }
     } else {
       setAmountA('0.');
@@ -302,7 +305,7 @@ const AddLiquidity = () => {
       }
       if (exchangeRate && numValue) {
         const newAmountB = numValue / exchangeRate;
-        setAmountA(newAmountB);
+        setAmountA(toFixedDown(parseFloat(newAmountB), 8));
       }
     } else {
       setAmountB('0.');
@@ -353,7 +356,7 @@ const AddLiquidity = () => {
             <option key={key} value={key}>{tokens[key].symbol}</option>
           ))}
         </select>
-        {tokenA && tokens[tokenA] && (
+        {tokenA && (
           <TokenInfo>
             <img src={tokens[tokenA].logo} alt="Token Logo" width="20" />
             Balance:<a><span onClick={handleBalanceClickIn} id={`balance-${tokenA}`}> {balanceA}</span></a>
@@ -376,7 +379,7 @@ const AddLiquidity = () => {
             <option key={key} value={key}>{tokens[key].symbol}</option>
           ))}
         </select>
-        {tokenB && tokens[tokenB] && (
+        {tokenB && (
           <TokenInfo>
             <img src={tokens[tokenB].logo} alt="Token Logo" width="20" />
             Balance:<a><span onClick={handleBalanceClickOut} id={`balance-${tokenB}`}>{balanceB}</span></a>
@@ -445,6 +448,7 @@ const AddLiquidity = () => {
           noLiquidity={noLiquidity}
           needsApprovalB={needsApprovalB}
           setAllowanceA={setAllowanceA}
+          setAllowanceB={setAllowanceB}
           allowanceA={allowanceA}
           allowanceB={allowanceB}
           onTokenSelection={handleTokenSelection}

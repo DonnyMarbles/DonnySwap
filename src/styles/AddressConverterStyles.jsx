@@ -1,13 +1,12 @@
 import styled from 'styled-components';
 
 export const ConverterContainer = styled.div`
+  width: 100%;
+  overflow-x: auto;
+  margin: 20px;
   background: #fcc375;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  margin-top: 20px;
-  padding: 20px;
   border-radius: 10px;
+  box-shadow: 0 4px 8px #000;
 `;
 
 export const InputContainer = styled.div`

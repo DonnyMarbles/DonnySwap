@@ -76,3 +76,32 @@ export const ErrorMessage = styled.div`
   color: #000;
   font-size: 0.9em;
 `;
+
+export const LoadingSpinner = styled.div`
+  margin: 50px auto;
+  text-align: center;
+  img {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    display: block;
+    margin: 0 auto;
+  }
+
+  @keyframes spin {
+    0% {
+      transform: rotate(0deg);
+    }
+    100% {
+      transform: rotate(360deg);
+    }
+  }
+
+  p {
+    margin-top: 10px;
+    font-size: 1.2rem;
+    color: #333;
+    font-weight: bold;
+  }
+`;
