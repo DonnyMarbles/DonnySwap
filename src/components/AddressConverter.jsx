@@ -21,7 +21,7 @@ import {convertH160ToSs58,
 
 const AddressConverter= () => {
 
-  const [inputAddrFormat, setInputAddrFormat] = useState(ADDRESS_FORMAT.snow);
+  const [inputAddrFormat, setInputAddrFormat] = useState(ADDRESS_FORMAT.h160);
   const [inputAddress, setInputAddress] = useState('');
   const [outputAddress, setOutputAddress] = useState('');
   const [error, setError] = useState('');

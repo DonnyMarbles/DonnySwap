@@ -7,7 +7,7 @@ export const HomeContainer = styled.div`
   background: #fcc375;
   border-radius: 10px;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-  max-width: 400px;
+  max-width: 420px;
   display: inline-flex;
   flex-direction: column;
   align-items: center;
