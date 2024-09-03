@@ -26,9 +26,11 @@ const AddressConverter= () => {
   const [outputAddress, setOutputAddress] = useState('');
   const [error, setError] = useState('');
 
-  function handleInputFormatChange (e) {
+  function handleInputFormatChange(e) {
     setInputAddrFormat(e.target.value);
-  }
+    console.log(`Input Address Format set to: ${e.target.value}`);
+}
+
 
   function handleInputAddrChange (e) {
     setInputAddress(e.target.value);
@@ -95,7 +97,7 @@ const AddressConverter= () => {
           </label>
           <Dropdown value={inputAddrFormat} onChange={handleInputFormatChange}>
             <option value="default">Select an Input</option>
-            <option value="h160">H160 (EVM)</option>
+            <option value={ADDRESS_FORMAT.h160}>H160 (EVM)</option>
           </Dropdown>
         </InputContainer>
 
