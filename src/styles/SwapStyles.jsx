@@ -122,3 +122,9 @@ export const LoadingSpinner = styled.div`
     font-weight: bold;
   }
 `;
+
+export const GreyedOutUSD = styled.span`
+  color: grey;
+  font-size: 0.8em;
+  display: flex;
+`;

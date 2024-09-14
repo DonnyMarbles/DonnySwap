@@ -1,4 +1,4 @@
-import React, { useState, useContext, useEffect } from 'react';
+import React from 'react';
 import { ethers } from 'ethers';
 import {
     AddLiquidityContainer,
@@ -31,10 +31,7 @@ const AddLiquidityTokens = ({
     setAllowanceB,
     noLiquidity,
     lpBalance,
-    allowanceA,
-    allowanceB,
-    error,
-    checkIfNeedsApproval
+    error
 }) => {
 
     const handleApprove = async (tokenSymbol, amount) => {
@@ -60,9 +57,6 @@ const AddLiquidityTokens = ({
             console.error('Error approving token:', err);
         }
     };
-    
-
-    
 
     const handleAddLiquidity = async () => {
         try {

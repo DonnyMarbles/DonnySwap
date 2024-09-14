@@ -5,6 +5,7 @@ import { ABIContext } from '../contexts/ABIContext';
 import { ethers } from 'ethers';
 import { TableContainer, StyledTable, LogoCell, PercentageCell, LoadingSpinner } from '../styles/TokenBalancesStyles';
 import { ApiPromise, WsProvider } from '@polkadot/api';
+import { KRESTPriceContext } from '../contexts/KRESTPriceContext'; // Import KRESTPriceContext
 
 const TokenBalances = () => {
     const { address } = useAccount();
@@ -15,6 +16,7 @@ const TokenBalances = () => {
     const [blockNumber, setBlockNumber] = useState(0);
     const [tokenData, setTokenData] = useState([]);
     const [loading, setLoading] = useState(true); // Added loading state
+    const { krestPrice, loading: priceLoading, error: priceError } = useContext(KRESTPriceContext); // Get KREST price from context
 
     useEffect(() => {
         if (provider) {
@@ -115,7 +117,7 @@ const TokenBalances = () => {
             const { symbol, logo } = tokenDetails;
 
             try {
-                let totalSupply, circulatingSupply, userBalance, burnedPercentage, userShare, totalBurnedTokens;
+                let totalSupply, circulatingSupply, userBalance, burnedPercentage, userShare, totalBurnedTokens, marketCap, userBalanceUSD;
                 let burnedPercentageFormatted = '0.00';
 
                 if (symbol === 'KRST') {
@@ -152,6 +154,14 @@ const TokenBalances = () => {
                         userShare = userShare.toFixed(2);
                     }
 
+                    if (krestPrice) {
+                        marketCap = circulatingSupply.mul(ethers.utils.parseUnits(krestPrice.toString(), 18)).div(ethers.BigNumber.from(10).pow(18));
+                        userBalanceUSD = userBalance.mul(ethers.utils.parseUnits(krestPrice.toString(), 18)).div(ethers.BigNumber.from(10).pow(18));
+                    } else {
+                        marketCap = ethers.BigNumber.from(0);
+                        userBalanceUSD = ethers.BigNumber.from(0);
+                    }
+
                 } else {
                     const tokenContract = new ethers.Contract(tokenAddress, ERC20ABI, provider);
                     totalSupply = await tokenContract.totalSupply();
@@ -170,18 +180,28 @@ const TokenBalances = () => {
 
                     userShare = userBalance.mul(10000).div(totalSupply);
                     userShare = userShare < 0.01 ? '<0.01' : Number(ethers.utils.formatUnits(userShare, 2)).toFixed(2);
+
+                    if (krestPrice) {
+                        marketCap = circulatingSupply.mul(ethers.utils.parseUnits(krestPrice.toString(), 18)).div(ethers.BigNumber.from(10).pow(18));
+                        userBalanceUSD = userBalance.mul(ethers.utils.parseUnits(krestPrice.toString(), 18)).div(ethers.BigNumber.from(10).pow(18));
+                    } else {
+                        marketCap = ethers.BigNumber.from(0);
+                        userBalanceUSD = ethers.BigNumber.from(0);
+                    }
                 }
 
                 data.push({
                     symbol,
                     logo,
-                    totalSupply: symbol === 'KRST' ? '400,000,000' : Number(ethers.utils.formatUnits(totalSupply, 18)).toFixed(6),
+                    totalSupply: symbol === 'KRST' ? '400000000' : Number(ethers.utils.formatUnits(totalSupply, 18)).toFixed(6),
                     circulatingSupply: circulatingSupply.isZero() ? '0.00' : Number(ethers.utils.formatUnits(circulatingSupply, 18)).toFixed(6),
                     userBalance: Number(ethers.utils.formatUnits(userBalance, 18)).toFixed(6),
                     burnedPercentage: burnedPercentageFormatted,
                     totalBurnedTokens: Number(ethers.utils.formatUnits(totalBurnedTokens, 18)).toFixed(6),
                     userShare,
                     tokenAddress: tokenAddress,
+                    marketCap: Number(ethers.utils.formatUnits(marketCap, 18)).toFixed(2), // Add market cap
+                    userBalanceUSD: Number(ethers.utils.formatUnits(userBalanceUSD, 18)).toFixed(2), // Add user balance in USD
                 });
             } catch (error) {
                 console.error(`Error fetching data for token ${symbol} at address ${tokenAddress}:`, error);
@@ -208,7 +228,9 @@ const TokenBalances = () => {
                         <th>Symbol</th>
                         <th>Total Supply</th>
                         <th>Circulating Supply</th>
+                        <th>Circulating Market Cap</th> {/* Add Market Cap column */}
                         <th>Your Balance</th>
+                        <th>Your Balance USD</th> {/* Add Your Balance USD column */}
                         <th>Your % of Total Supply</th>
                         <th>Tokens 🔥 or in 🔥 LP</th>
                         <th>% Total Supply 🔥</th>
@@ -242,13 +264,15 @@ const TokenBalances = () => {
                                     {token.symbol}
                                 </a>
                             </td>
-                            <td>{token.totalSupply}</td>
-                            <td>{token.circulatingSupply}</td>
-                            <td>{token.userBalance}</td>
+                            <td>{new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(token.totalSupply)}</td>
+                            <td>{new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(token.circulatingSupply)}</td>
+                            <td>${new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(token.marketCap)}</td> {/* Display formatted Market Cap */}
+                            <td>{new Intl.NumberFormat('en-US', { minimumFractionDigits: 8, maximumFractionDigits: 8 }).format(token.userBalance)}</td>
+                            <td>${new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(token.userBalanceUSD)}</td> {/* Display formatted Your Balance USD */}
                             <PercentageCell percentage={token.userShare}>
                                 {token.userShare}%
                             </PercentageCell>
-                            <td>{token.totalBurnedTokens}</td>
+                            <td>{new Intl.NumberFormat('en-US', { minimumFractionDigits: 8, maximumFractionDigits: 8 }).format(token.totalBurnedTokens)}</td>
                             <PercentageCell percentage={token.burnedPercentage}>
                                 {token.burnedPercentage}%
                             </PercentageCell>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { ethers } from 'ethers';
 import { useSigner, useAccount } from 'wagmi';
 import {
@@ -30,10 +30,7 @@ const AddLiquidityKRST = ({
   lpBalance,
   setAllowanceA,
   setAllowanceB,
-  allowanceA,
-  allowanceB,
-  error,
-  checkIfNeedsApproval
+  error
 }) => {
   const { data: signer } = useSigner(); // Get the signer using wagmi's useSigner hook
   const { address: account } = useAccount(); // Get the connected account using wagmi's useAccount hook
@@ -43,8 +40,8 @@ const AddLiquidityKRST = ({
       if (tokenSymbol === 'KRST'){
         return;
       }
-      let amountParsed = ethers.utils.parseUnits(amount.toString(), decimals);
       const decimals = getTokenDecimals(tokenSymbol);
+      let amountParsed = ethers.utils.parseUnits(amount.toString(), decimals);
       const tokenAddress = getTokenAddress(tokenSymbol);
       if (!tokenAddress) throw new Error(`Token address for ${tokenSymbol} not found`);
       const contract = new ethers.Contract(tokenAddress, ERC20ABI, signer);      

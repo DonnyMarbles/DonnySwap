@@ -2,14 +2,16 @@ import React, { useState, useEffect, useContext } from 'react';
 import { useProvider, useAccount } from 'wagmi';
 import { TokenContext } from '../contexts/TokenContext';
 import { ABIContext } from '../contexts/ABIContext';
+import { KRESTPriceContext } from '../contexts/KRESTPriceContext'; // Import KRESTPriceContext
 import { ethers } from 'ethers';
-import { TableContainer, StyledTable, LogoCell, PercentageCell, LoadingSpinner } from '../styles/TokenPairsStyles';
+import { TableContainer, StyledTable, LogoCell, PercentageCell, LoadingSpinner, GreyedOutUSD } from '../styles/TokenPairsStyles';
 
 const TokenPairs = () => {
     const provider = useProvider();
     const { address: account } = useAccount();
     const { tokens } = useContext(TokenContext);
     const { UniswapV2PairABI, UniswapV2FactoryABI } = useContext(ABIContext);
+    const { krestPrice } = useContext(KRESTPriceContext); // Use KRESTPriceContext
 
     const [pairs, setPairs] = useState([]);
     const [blockNumber, setBlockNumber] = useState(0);
@@ -79,6 +81,11 @@ const TokenPairs = () => {
                 const burnedBalance = await pairContract.balanceOf(nullAddress);
                 const burnedPercentage = (burnedBalance / totalSupply) * 100;
                 const userShare = (userBalance / totalSupply) * 100;
+
+                // Calculate USD values
+                const totalSupplyUSD = krestPrice ? (parseFloat(ethers.utils.formatUnits(totalSupply, 18)) * krestPrice).toFixed(2) : '0.00';
+                const userBalanceUSD = krestPrice ? (parseFloat(ethers.utils.formatUnits(userBalance, 18)) * krestPrice).toFixed(2) : '0.00';
+
                 pairsData.push({
                     tokenASymbol: tokenSymbolA,
                     tokenBSymbol: tokenSymbolB,
@@ -93,6 +100,8 @@ const TokenPairs = () => {
                     tokenBAddress,
                     burnedBalance,
                     burnedPercentage,  // Add the burned percentage to the data
+                    totalSupplyUSD,    // Add total supply USD value
+                    userBalanceUSD     // Add user balance USD value
                 });
             }
             console.log('Pairs data:', pairsData);
@@ -119,7 +128,9 @@ const TokenPairs = () => {
                             <th>Symbol</th>
                             <th>Reserves</th>
                             <th>Total LP Tokens</th>
+                            <th>Total LP Tokens $USD</th> {/* New column */}
                             <th>Your LP Balance</th>
+                            <th>Your LP Balance $USD</th> {/* New column */}
                             <th>Your LP Share %</th>
                             <th>Total LP Tokens 🔥</th>
                             <th>% Total LP Tokens 🔥</th>
@@ -171,6 +182,9 @@ const TokenPairs = () => {
                                 >
                                     {pair.tokenASymbol}/{pair.tokenBSymbol}
                                 </a></td>
+                                <td>
+                                    ${pair.totalSupplyUSD}
+                                </td>
                                 <td>{Number(ethers.utils.formatUnits(pair.userBalance, 18)).toFixed(6)} <a
                                     href={`https://krest.subscan.io/account/${pair.pairAddress}`}
                                     target="_blank"
@@ -178,6 +192,9 @@ const TokenPairs = () => {
                                 >
                                     {pair.tokenASymbol}/{pair.tokenBSymbol}
                                 </a></td>
+                                <td>
+                                   ${pair.userBalanceUSD}
+                                </td>
                                 <PercentageCell percentage={pair.userShare}>
                                     {pair.userShare.toFixed(2)}%
                                 </PercentageCell>
@@ -189,11 +206,9 @@ const TokenPairs = () => {
                                 </PercentageCell>
                             </tr>
                         ))}
-                  
                     </tbody>
-                     
                 </StyledTable>
-            )} 
+            )}
         </TableContainer>
     );
 };

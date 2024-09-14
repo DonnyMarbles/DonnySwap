@@ -334,13 +334,13 @@ const FeesDashboard = () => {
                       <img src={dexOverallUsdFees[symbol]?.logo} alt={`${symbol} logo`} /> {dexOverallUsdFees[symbol]?.amount} <b>{symbol}</b>
                     </TableCell>
                     <TableCell>
-                      {(dexOverallUsdFees[symbol]?.usd < 0.01 ? '<0.01' : dexOverallUsdFees[symbol]?.usd) || 'N/A'} USD
+                      ${(dexOverallUsdFees[symbol]?.usd < 0.01 ? '<0.01' : dexOverallUsdFees[symbol]?.usd) || 'N/A'} USD
                     </TableCell>
                     <TableCell>
                       <img src={usdFees[symbol]?.logo} alt={`${symbol} logo`} /> {usdFees[symbol]?.amount} <b>{symbol}</b>
                     </TableCell>
                     <TableCell>
-                      {(usdFees[symbol]?.usd < 0.01 ? '<0.01' : usdFees[symbol]?.usd) || 'N/A'} USD
+                      ${(usdFees[symbol]?.usd < 0.01 ? '<0.01' : usdFees[symbol]?.usd) || 'N/A'} USD
                     </TableCell>
                   </TableRow>
                 ))}

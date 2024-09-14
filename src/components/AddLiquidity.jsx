@@ -5,11 +5,13 @@ import { ethers } from 'ethers';
 import { useAccount, useProvider, useSigner } from 'wagmi';
 import { TokenContext } from '../contexts/TokenContext';
 import { ABIContext } from '../contexts/ABIContext';
+import { KRESTPriceContext } from '../contexts/KRESTPriceContext';
 import {
   AddLiquidityContainer,
   AddLiquidityInputContainer,
   TokenInfo,
   NoLiquidityMessage,
+  GreyedOutUSD,
 } from '../styles/AddLiquidityStyles';
 
 const AddLiquidity = () => {
@@ -17,15 +19,18 @@ const AddLiquidity = () => {
   const provider = useProvider();
   const { data: signer } = useSigner();
   const { tokens, routerAddress } = useContext(TokenContext);
-  const { UniswapV2Router02ABI, UniswapV2PairABI, UniswapV2FactoryABI, ERC20ABI, WrappedKRESTABI } = useContext(ABIContext);
-  
+  const { UniswapV2Router02ABI, UniswapV2PairABI, ERC20ABI, UniswapV2FactoryABI } = useContext(ABIContext);
+  const { krestPrice } = useContext(KRESTPriceContext);
+
   const [tokenA, setTokenIn] = useState('');
   const [tokenB, setTokenOut] = useState('');
   const [amountA, setAmountA] = useState('');
   const [amountB, setAmountB] = useState('');
   const [lpBalance, setLpBalance] = useState('0.'); 
   const [balanceA, setBalanceA] = useState('0.');
+  const [balanceAUSD, setBalanceAUSD] = useState('0.0');
   const [balanceB, setBalanceB] = useState('0.');
+  const [balanceBUSD, setBalanceBUSD] = useState('0.0');
   const [noLiquidity, setNoLiquidity] = useState(false);
   const [allowanceA, setAllowanceA] = useState(ethers.constants.Zero);
   const [allowanceB, setAllowanceB] = useState(ethers.constants.Zero);
@@ -35,6 +40,9 @@ const AddLiquidity = () => {
   const [blockNumber, setBlockNumber] = useState(0);
   const [error, setError] = useState('');
 
+  function toFixedDown(value, decimals) {
+    return (Math.floor(value * Math.pow(10, decimals)) / Math.pow(10, decimals)).toFixed(decimals);
+  }
   const handleTokenSelection = (selectedTokenA, selectedTokenB) => {
     setTokenIn(selectedTokenA);
     setTokenOut(selectedTokenB);
@@ -61,6 +69,18 @@ const AddLiquidity = () => {
       console.log(`Balance B set to: ${balanceB}`);
     }
   }, [balanceB, tokenB, account, blockNumber]);
+
+  useEffect(() => {
+    if (balanceA && krestPrice) {
+      checkBalanceUSD(tokenA, balanceA, krestPrice, setBalanceAUSD);
+    }
+  }, [balanceA, krestPrice, tokenA]);
+
+  useEffect(() => {
+    if (balanceB && krestPrice) {
+      checkBalanceUSD(tokenB, balanceB, krestPrice, setBalanceBUSD);
+    }
+  }, [balanceB, krestPrice, tokenB]);
   
   useEffect(() => {
     if (provider) {
@@ -97,9 +117,6 @@ const AddLiquidity = () => {
       checkIfNeedsApproval(tokenB, amountB, allowanceB, setNeedsApprovalB);
     }
   }, [amountA, amountB, tokenA, tokenB, allowanceA, allowanceB, blockNumber]);
-  function toFixedDown(value, decimals) {
-    return (Math.floor(value * Math.pow(10, decimals)) / Math.pow(10, decimals)).toFixed(decimals);
-  }
 
   const checkBalance = async (tokenSymbol, setBalance) => {
     try {
@@ -119,6 +136,50 @@ const AddLiquidity = () => {
     }
   };
 
+  const checkBalanceUSD = async (tokenSymbol, balance, krestPrice, setBalanceUSD) => {
+    console.log('checkBalanceUSD input types:', {
+      tokenSymbol,
+      balance: typeof balance,
+      krestPrice: typeof krestPrice
+    });
+    console.log('checkBalanceUSD input values:', {
+      tokenSymbol,
+      balance,
+      krestPrice
+    });
+
+    if (krestPrice) {
+      let balanceBN;
+      if (tokenSymbol === 'KRST') {
+        balanceBN = ethers.BigNumber.from(parseInt(parseFloat(balance) * Math.pow(10, 18)).toString());
+      } else {
+        const tokenAddress = getTokenAddress(tokenSymbol);
+        if (!tokenAddress || tokenAddress === "") {
+          console.error(`Token address not found for ${tokenSymbol}`);
+          setBalanceUSD('0');
+          return ethers.BigNumber.from(0);
+        }
+        const tokenContract = new ethers.Contract(tokenAddress, ERC20ABI, provider);
+        const decimals = await tokenContract.decimals();
+        balanceBN = ethers.utils.parseUnits(balance, decimals);
+      }
+      console.log('balanceBN:', balanceBN.toString());
+
+      const krestPriceBN = ethers.utils.parseUnits(krestPrice.toString(), 18);
+      console.log('krestPriceBN:', krestPriceBN.toString());
+
+      const result = balanceBN.mul(krestPriceBN).div(ethers.BigNumber.from(10).pow(18));
+      console.log('Result:', result.toString());
+
+      setBalanceUSD(ethers.utils.formatUnits(result, 18));
+      return result;
+    } else {
+      console.log('Returning 0 due to invalid input');
+      setBalanceUSD('0');
+      return ethers.BigNumber.from(0);
+    }
+  };
+
   const checkIfNeedsApproval = (tokenSymbol, amount, allowance, setNeedsApproval) => {
     if (tokenSymbol === "default" || amount === "") {
       return; // Skip check if token is not selected
@@ -131,7 +192,6 @@ const AddLiquidity = () => {
     }
     const decimals = getTokenDecimals(tokenSymbol);
     try {
-      
       const amountToCheck = parseFloat(amount);
       const amountParsed = ethers.utils.parseUnits(amountToCheck.toString(), decimals);
       console.log(`Amount parsed for ${tokenSymbol}: ${amountParsed}, Allowance: ${allowance}`);
@@ -292,7 +352,7 @@ const AddLiquidity = () => {
         setAmountB(toFixedDown(parseFloat(newAmountA), 8));
       }
     } else {
-      setAmountA('0.');
+      setAmountA('0');
     }
   };
 
@@ -308,7 +368,7 @@ const AddLiquidity = () => {
         setAmountA(toFixedDown(parseFloat(newAmountB), 8));
       }
     } else {
-      setAmountB('0.');
+      setAmountB('0');
     }
   };
 
@@ -360,6 +420,7 @@ const AddLiquidity = () => {
           <TokenInfo>
             <img src={tokens[tokenA].logo} alt="Token Logo" width="20" />
             Balance:<a><span onClick={handleBalanceClickIn} id={`balance-${tokenA}`}> {balanceA}</span></a>
+            <GreyedOutUSD> (${toFixedDown(parseFloat(balanceAUSD), 8)} USD)</GreyedOutUSD>
           </TokenInfo>
         )}
         <input
@@ -383,6 +444,7 @@ const AddLiquidity = () => {
           <TokenInfo>
             <img src={tokens[tokenB].logo} alt="Token Logo" width="20" />
             Balance:<a><span onClick={handleBalanceClickOut} id={`balance-${tokenB}`}>{balanceB}</span></a>
+            <GreyedOutUSD> (${toFixedDown(parseFloat(balanceBUSD), 8)} USD)</GreyedOutUSD>
           </TokenInfo>
         )}
         <input
@@ -426,39 +488,39 @@ const AddLiquidity = () => {
           checkIfNeedsApproval={checkIfNeedsApproval}
           lpBalance={lpBalance}
           error={error}
-        />
-      ) : (
-        <AddLiquidityTokens 
-          amountA={amountA}
-          amountB={amountB}
-          tokenA={tokenA}
-          tokenB={tokenB}
-          signer={signer}
-          routerAddress={routerAddress}
-          ERC20ABI={ERC20ABI}
-          UniswapV2Router02ABI={UniswapV2Router02ABI}
-          account={account}
-          tokens={tokens}
-          exchangeRate={exchangeRate}
-          getTokenDecimals={getTokenDecimals}
-          getTokenAddress={getTokenAddress}
-          setNeedsApprovalA={setNeedsApprovalA}
-          setNeedsApprovalB={setNeedsApprovalB}
-          needsApprovalA={needsApprovalA}
-          noLiquidity={noLiquidity}
-          needsApprovalB={needsApprovalB}
-          setAllowanceA={setAllowanceA}
-          setAllowanceB={setAllowanceB}
-          allowanceA={allowanceA}
-          allowanceB={allowanceB}
-          onTokenSelection={handleTokenSelection}
-          checkIfNeedsApproval={checkIfNeedsApproval} 
-          lpBalance={lpBalance}
-          error={error}
-        />
-      )}
-    </AddLiquidityContainer>
-  );
-};
-
-export default AddLiquidity;
+          />
+        ) : (
+          <AddLiquidityTokens 
+            amountA={amountA}
+            amountB={amountB}
+            tokenA={tokenA}
+            tokenB={tokenB}
+            signer={signer}
+            routerAddress={routerAddress}
+            ERC20ABI={ERC20ABI}
+            UniswapV2Router02ABI={UniswapV2Router02ABI}
+            account={account}
+            tokens={tokens}
+            exchangeRate={exchangeRate}
+            getTokenDecimals={getTokenDecimals}
+            getTokenAddress={getTokenAddress}
+            setNeedsApprovalA={setNeedsApprovalA}
+            setNeedsApprovalB={setNeedsApprovalB}
+            needsApprovalA={needsApprovalA}
+            noLiquidity={noLiquidity}
+            needsApprovalB={needsApprovalB}
+            setAllowanceA={setAllowanceA}
+            setAllowanceB={setAllowanceB}
+            allowanceA={allowanceA}
+            allowanceB={allowanceB}
+            onTokenSelection={handleTokenSelection}
+            checkIfNeedsApproval={checkIfNeedsApproval} 
+            lpBalance={lpBalance}
+            error={error}
+          />
+        )}
+      </AddLiquidityContainer>
+    );
+  };
+  
+  export default AddLiquidity;

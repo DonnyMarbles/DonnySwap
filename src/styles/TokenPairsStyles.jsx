@@ -91,3 +91,9 @@ export const LoadingSpinner = styled.div`
 export const PercentageCell = styled.td`
   color: ${props => props.percentage > 0 ? 'green' : 'red'};
 `;
+
+export const GreyedOutUSD = styled.span`
+  color: grey;
+  font-size: 0.8em;
+  display: flex;
+`;

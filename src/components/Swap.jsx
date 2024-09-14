@@ -3,12 +3,14 @@ import { ethers } from 'ethers';
 import { useAccount, useProvider, useSigner } from 'wagmi';
 import { TokenContext } from '../contexts/TokenContext';
 import { ABIContext } from '../contexts/ABIContext';
+import { KRESTPriceContext } from '../contexts/KRESTPriceContext';
 import {
   SwapContainer,
   SwapInputContainer,
   TokenInfo,
   NoLiquidityMessage,
   SlippageInputContainer,
+  GreyedOutUSD, // Import the new styled component
 } from '../styles/SwapStyles';
 import WrapUnwrap from './WrapUnwrap';
 import SwapTokens from './SwapTokens';
@@ -21,13 +23,15 @@ const Swap = () => {
   const WKRESTAddress = '0xDd11f4E48CE3A2B9043B2B0758ce704d3Fd191dc';
   const { tokens, routerAddress } = useContext(TokenContext);
   const { UniswapV2Router02ABI, UniswapV2PairABI, UniswapV2FactoryABI, ERC20ABI, WrappedKRESTABI } = useContext(ABIContext);
-
+  const { krestPrice } = useContext(KRESTPriceContext);
   const [tokenA, setTokenIn] = useState('');
   const [tokenB, setTokenOut] = useState('');
   const [amountA, setAmountA] = useState('');
   const [amountB, setAmountB] = useState('');
   const [balanceA, setBalanceA] = useState('0.0');
+  const [balanceAUSD, setBalanceAUSD] = useState('0.0');
   const [balanceB, setBalanceB] = useState('0.0');
+  const [balanceBUSD, setBalanceBUSD] = useState('0.0');
   const [slippage, setSlippage] = useState(0.5);
   const [noLiquidity, setNoLiquidity] = useState(false);
   const [allowanceA, setAllowanceA] = useState(ethers.constants.Zero);
@@ -41,16 +45,26 @@ const Swap = () => {
   useEffect(() => {
     if (tokenA && account) {
       checkBalance(tokenA, setBalanceA);
-      console.log(`Balance A set to: ${parseFloat(balanceA)}`);
     }
-  }, [tokenA]);
+  }, [tokenA, account]);
 
   useEffect(() => {
     if (tokenB && account) {
       checkBalance(tokenB, setBalanceB);
-      console.log(`Balance B set to: ${parseFloat(balanceB)}`);
     }
-  }, [tokenB]);
+  }, [tokenB, account]);
+
+  useEffect(() => {
+    if (balanceA && krestPrice) {
+      checkBalanceUSD(tokenA, balanceA, krestPrice, setBalanceAUSD);
+    }
+  }, [balanceA, krestPrice, tokenA]);
+
+  useEffect(() => {
+    if (balanceB && krestPrice) {
+      checkBalanceUSD(tokenB, balanceB, krestPrice, setBalanceBUSD);
+    }
+  }, [balanceB, krestPrice, tokenB]);
 
   useEffect(() => {
     if (provider) {
@@ -107,7 +121,50 @@ const Swap = () => {
       setBalance('0.'); // Fallback to 0 in case of an error
     }
   };
+  const checkBalanceUSD = async (tokenSymbol, balance, krestPrice, setBalanceUSD) => {
+    console.log('checkBalanceUSD input types:', {
+      tokenSymbol,
+      balance: typeof balance,
+      krestPrice: typeof krestPrice
+    });
+    console.log('checkBalanceUSD input values:', {
+      tokenSymbol,
+      balance,
+      krestPrice
+    });
 
+    if (krestPrice) {
+      let balanceBN;
+      if (tokenSymbol === 'KRST') {
+        balanceBN = ethers.BigNumber.from(parseInt(parseFloat(balance) * Math.pow(10, 18)).toString());
+      } else {
+        const tokenAddress = getTokenAddress(tokenSymbol);
+        if (!tokenAddress || tokenAddress === "") {
+          console.error(`Token address not found for ${tokenSymbol}`);
+          setBalanceUSD('0');
+          return ethers.BigNumber.from(0);
+        }
+        const tokenContract = new ethers.Contract(tokenAddress, ERC20ABI, provider);
+        const decimals = await tokenContract.decimals();
+        balanceBN = ethers.utils.parseUnits(balance, decimals);
+      }
+      console.log('balanceBN:', balanceBN.toString());
+
+      const krestPriceBN = ethers.utils.parseUnits(krestPrice.toString(), 18);
+      console.log('krestPriceBN:', krestPriceBN.toString());
+
+      const result = balanceBN.mul(krestPriceBN).div(ethers.BigNumber.from(10).pow(18));
+      console.log('Result:', result.toString());
+
+      setBalanceUSD(ethers.utils.formatUnits(result, 18));
+      return result;
+    } else {
+      console.log('Returning 0 due to invalid input');
+      setBalanceUSD('0');
+      return ethers.BigNumber.from(0);
+    }
+  };
+  
   const getTokenAddress = (tokenSymbol) => {
     if (tokenSymbol === 'KRST') return null; // KRST is native token, no contract address
     const token = Object.keys(tokens).find(key => tokens[key].address === tokenSymbol);
@@ -325,8 +382,10 @@ const Swap = () => {
           <TokenInfo>
             <img src={tokens[tokenA].logo} alt="Token Logo" width="20" />
             Balance:<a><span onClick={handleBalanceClickIn} id={`balance-${tokenA}`}> {toFixedDown(parseFloat(balanceA), 8)}</span></a>
+            <GreyedOutUSD> (~${toFixedDown(parseFloat(balanceAUSD), 8)} USD)</GreyedOutUSD>
           </TokenInfo>
         )}
+        
         <input
           type="number"
           inputMode="decimal"
@@ -348,8 +407,10 @@ const Swap = () => {
           <TokenInfo>
             <img src={tokens[tokenB].logo} alt="Token Logo" width="20" />
             Balance:<a><span onClick={handleBalanceClickOut} id={`balance-${tokenB}`}>{toFixedDown(parseFloat(balanceB), 8)}</span></a>
+            <GreyedOutUSD> (~${toFixedDown(parseFloat(balanceBUSD), 8)} USD)</GreyedOutUSD>
           </TokenInfo>
         )}
+        
         <input
           type="number"
           inputMode="decimal"
@@ -403,6 +464,7 @@ const Swap = () => {
           WKRESTAddress={WKRESTAddress}
           checkAllowance={checkAllowance}
           error={error}
+          krestPrice={krestPrice}
         />
       ) : (
         <SwapTokens
@@ -434,6 +496,7 @@ const Swap = () => {
           needsApprovalA={needsApprovalA}
           needsApprovalB={needsApprovalB}
           error={error}
+          krestPrice={krestPrice}
         />
       )}
       <SlippageInputContainer>
