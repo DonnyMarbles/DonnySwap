@@ -17,7 +17,7 @@ const Home = () => {
   
   return (
     <HomeContainer>
-      <SectionHeader>Welcome to DonnySwap!<br />v0.1.6.02</SectionHeader>
+      <SectionHeader>Welcome to DonnySwap!<br />v0.1.6.1</SectionHeader>
       <ExternalLink href="https://x.com/Donny_Marbles">
         <TokenImage src={MRBLLogo} alt="Token Logo" width="60" />
       </ExternalLink>
