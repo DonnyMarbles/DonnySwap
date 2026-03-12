@@ -16,6 +16,7 @@ import { executeContractWrite } from '../../lib/viemHelpers';
 import { apiUrl } from '../../constants/api';
 import { DSFO_NFT_ADDRESS, MRBL_WPEAQ_PAIR_ADDRESS } from '../../constants/contracts';
 import dsfoMintBackground from '../../assets/DSFO_Mint.jpg';
+import dsfoNftImage from '../../assets/donny_ticket_final.jpg';
 import WPEAQLogo from '../../assets/WPEAQ_logo.png';
 import MRBLLogo from '../../assets/MRBL_logo.png';
 
@@ -265,7 +266,7 @@ const MintDSFONFT = () => {
         <MintContainer>
             <h3>Mint DSFO NFT</h3>
             <MintInfoContainer>
-                <img src="https://nft-image.donnyswap.xyz/" alt="DSFO Mint" />
+                <img src={dsfoNftImage} alt="DSFO Mint" />
                 <MintDetails>
                     Mint Price: {mintPrice ? formatUnits(mintPrice, 18) : 'Loading...'} <img src={WPEAQLogo} width={18} alt="WPEAQ logo" /><img src={MRBLLogo} width={18} alt="MRBL logo" /> WPEAQ-MRBL LP Tokens
                 </MintDetails>
