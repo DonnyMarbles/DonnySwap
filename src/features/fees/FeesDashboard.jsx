@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { formatUnits, getAddress } from 'viem';
 import axios from 'axios';
 import { useTokens } from '../../contexts/TokenContext';
@@ -49,50 +49,64 @@ const formatUsdWithFloor = (value) => {
   return formatCurrency(numeric);
 };
 
+const WPEAQ_ADDRESS = getAddress(WRAPPED_PEAQ_ADDRESS);
+
 const FeesDashboard = () => {
   const { tokens } = useTokens();
   const { UniswapV2PairABI, DSFONFTABI } = useABI();
   const { address: userAddress, publicClient } = useWallet();
   const { PEAQPrice } = usePEAQPrice();
   const { tokenPairs } = useTokenPairsCtx();
-  const [totalFees, setTotalFees] = useState({});
+
+  // Raw aggregated fees from API: { symbol: amount }
+  const [dexFees, setDexFees] = useState({});
   const [userFees, setUserFees] = useState({});
-  const [usdFees, setUsdFees] = useState({});
-  const [dexOverallUsdFees, setDexOverallUsdFees] = useState({});
-  const [loading, setLoading] = useState(true);
+  // Token USD prices (computed once, shared): { symbol: usdPricePerToken }
+  const [tokenPrices, setTokenPrices] = useState({});
+
+  const [dexFeesLoaded, setDexFeesLoaded] = useState(false);
+  const [userFeesLoaded, setUserFeesLoaded] = useState(false);
+  const [pricesLoaded, setPricesLoaded] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+
   const [dsfoNFTCount, setDsfoNFTCount] = useState(0);
   const [ownershipPercentage, setOwnershipPercentage] = useState(0);
-  const [calculationsDone, setCalculationsDone] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [showEarningsOnly, setShowEarningsOnly] = useState(false);
 
-  const DSFOContractAddress = getAddress(DSFO_NFT_ADDRESS);
-  const WPEAQ_ADDRESS = getAddress(WRAPPED_PEAQ_ADDRESS);
+  const priceComputeRef = useRef(false);
 
+  // Derive loading: show spinner until DEX fees + prices are ready
+  // (user fees are optional — only if wallet connected)
+  const loading = !dexFeesLoaded || !pricesLoaded;
+
+  // Build rows from aggregated data + shared price map
   const feeRows = useMemo(() => {
-    const symbols = new Set([
-      ...Object.keys(totalFees || {}),
-      ...Object.keys(dexOverallUsdFees || {}),
-      ...Object.keys(usdFees || {}),
+    const allSymbols = new Set([
+      ...Object.keys(dexFees),
+      ...Object.keys(userFees),
     ]);
 
-    return Array.from(symbols)
+    return Array.from(allSymbols)
       .map((symbol) => {
-        const dexData = (dexOverallUsdFees && dexOverallUsdFees[symbol]) || {};
-        const userData = (usdFees && usdFees[symbol]) || {};
+        const dexAmount = safeNumber(dexFees[symbol]);
+        const userAmount = safeNumber(userFees[symbol]);
+        const pricePerToken = safeNumber(tokenPrices[symbol]);
+
+        const tokenData = Object.values(tokens).find((t) => t.symbol === symbol);
+        const logo = tokenData ? tokens[tokenData.address]?.logo || '' : '';
 
         return {
           symbol,
-          logo: dexData.logo || userData.logo || '',
-          dexAmount: safeNumber(dexData.amount ?? totalFees?.[symbol]),
-          dexUsd: safeNumber(dexData.usd),
-          userAmount: safeNumber(userData.amount ?? userFees?.[symbol]),
-          userUsd: safeNumber(userData.usd),
+          logo,
+          dexAmount,
+          dexUsd: dexAmount * pricePerToken,
+          userAmount,
+          userUsd: userAmount * pricePerToken,
         };
       })
       .sort((a, b) => b.dexUsd - a.dexUsd);
-  }, [totalFees, dexOverallUsdFees, usdFees, userFees]);
+  }, [dexFees, userFees, tokenPrices, tokens]);
 
   const filteredRows = useMemo(() => {
     const normalizedSearch = searchTerm.trim().toLowerCase();
@@ -127,22 +141,183 @@ const FeesDashboard = () => {
   const hasAnyRows = feeRows.length > 0;
   const ownershipDisplay = `${safeNumber(ownershipPercentage).toFixed(2)}%`;
 
-  // Fetch NFT Data
+  // ── Fetch DEX-wide aggregated fees ──
   useEffect(() => {
+    let cancelled = false;
+
+    const fetchDexFees = async () => {
+      try {
+        const response = await axios.get(apiUrl('getAggregatedFeesPEAQ'));
+        if (cancelled) return;
+
+        const aggregated = {};
+        (response.data || []).forEach((row) => {
+          aggregated[row.token_symbol] = parseFloat(row.total_amount);
+        });
+        setDexFees(aggregated);
+      } catch (err) {
+        console.error('Error fetching aggregated DEX fees:', err);
+        if (!cancelled) setErrorMessage('Error fetching fees data.');
+      } finally {
+        if (!cancelled) setDexFeesLoaded(true);
+      }
+    };
+
+    fetchDexFees();
+    return () => { cancelled = true; };
+  }, []);
+
+  // ── Fetch user-specific aggregated fees ──
+  useEffect(() => {
+    if (!userAddress) {
+      setUserFees({});
+      setUserFeesLoaded(true);
+      return;
+    }
+
+    let cancelled = false;
+
+    const fetchUserFees = async () => {
+      try {
+        const response = await axios.get(apiUrl(`getAggregatedFeesPEAQ/${userAddress}`));
+        if (cancelled) return;
+
+        const aggregated = {};
+        (response.data || []).forEach((row) => {
+          aggregated[row.token_symbol] = parseFloat(row.total_amount);
+        });
+        setUserFees(aggregated);
+      } catch (err) {
+        console.error('Error fetching user fees:', err);
+        if (!cancelled) setErrorMessage('Error fetching fees data.');
+      } finally {
+        if (!cancelled) setUserFeesLoaded(true);
+      }
+    };
+
+    fetchUserFees();
+    return () => { cancelled = true; };
+  }, [userAddress]);
+
+  // ── Compute token→USD prices once (shared for both DEX and user) ──
+  const computeTokenPrices = useCallback(async () => {
+    if (!tokens || !Object.keys(tokens).length || !tokenPairs || !PEAQPrice || !publicClient || !UniswapV2PairABI) {
+      return;
+    }
+
+    // Gather all unique symbols that need pricing
+    const allSymbols = new Set([...Object.keys(dexFees), ...Object.keys(userFees)]);
+    if (allSymbols.size === 0) {
+      setPricesLoaded(true);
+      return;
+    }
+
+    const prices = {};
+
+    // PEAQ and WPEAQ are priced directly
+    if (allSymbols.has('PEAQ')) {
+      prices.PEAQ = PEAQPrice;
+      allSymbols.delete('PEAQ');
+    }
+    if (allSymbols.has('WPEAQ')) {
+      prices.WPEAQ = PEAQPrice;
+      allSymbols.delete('WPEAQ');
+    }
+
+    // For remaining tokens, find their pair with WPEAQ and batch-fetch reserves
+    const pairLookups = [];
+    for (const symbol of allSymbols) {
+      const tokenData = Object.values(tokens).find((t) => t.symbol === symbol);
+      if (!tokenData) continue;
+
+      for (const pairAddress in tokenPairs) {
+        const pair = tokenPairs[pairAddress];
+        if (pair.token1_address === tokenData.address || pair.token2_address === tokenData.address) {
+          pairLookups.push({
+            symbol,
+            tokenData,
+            pairAddress: getAddress(pairAddress),
+            pair,
+          });
+          break;
+        }
+      }
+    }
+
+    // Batch all getReserves calls in parallel
+    if (pairLookups.length > 0) {
+      try {
+        const reserveResults = await Promise.all(
+          pairLookups.map((lookup) =>
+            publicClient.readContract({
+              address: lookup.pairAddress,
+              abi: UniswapV2PairABI,
+              functionName: 'getReserves',
+            })
+          )
+        );
+
+        reserveResults.forEach(([reserve0, reserve1], index) => {
+          const { symbol, tokenData, pair } = pairLookups[index];
+          let reserveWPEAQ, reserveToken;
+
+          if (getAddress(pair.token1_address) === WPEAQ_ADDRESS) {
+            reserveWPEAQ = parseFloat(formatUnits(reserve0, 18));
+            reserveToken = parseFloat(formatUnits(reserve1, tokenData.decimals));
+          } else {
+            reserveWPEAQ = parseFloat(formatUnits(reserve1, 18));
+            reserveToken = parseFloat(formatUnits(reserve0, tokenData.decimals));
+          }
+
+          if (reserveToken > 0) {
+            const priceInWPEAQ = reserveWPEAQ / reserveToken;
+            prices[symbol] = priceInWPEAQ * PEAQPrice;
+          } else {
+            prices[symbol] = 0;
+          }
+        });
+      } catch (err) {
+        console.error('Error batch-fetching reserves for USD pricing:', err);
+      }
+    }
+
+    setTokenPrices(prices);
+    setPricesLoaded(true);
+  }, [tokens, tokenPairs, PEAQPrice, publicClient, UniswapV2PairABI, dexFees, userFees]);
+
+  useEffect(() => {
+    if (!dexFeesLoaded) return;
+
+    // Only compute once per data change
+    if (priceComputeRef.current) return;
+    priceComputeRef.current = true;
+
+    computeTokenPrices().finally(() => {
+      priceComputeRef.current = false;
+    });
+  }, [dexFeesLoaded, computeTokenPrices]);
+
+  // ── Fetch NFT ownership data ──
+  useEffect(() => {
+    if (!userAddress || !publicClient || !DSFONFTABI) return;
+    let cancelled = false;
+
     const fetchNFTData = async () => {
       try {
-        if (!userAddress || !publicClient) return;
+        const dsfoContract = { address: getAddress(DSFO_NFT_ADDRESS), abi: DSFONFTABI };
+        const [nftCount, totalSupply] = await Promise.all([
+          publicClient.readContract({
+            ...dsfoContract,
+            functionName: 'balanceOf',
+            args: [userAddress],
+          }),
+          publicClient.readContract({
+            ...dsfoContract,
+            functionName: 'totalSupply',
+          }),
+        ]);
 
-        const dsfoContract = { address: DSFOContractAddress, abi: DSFONFTABI };
-        const nftCount = await publicClient.readContract({
-          ...dsfoContract,
-          functionName: 'balanceOf',
-          args: [userAddress],
-        });
-        const totalSupply = await publicClient.readContract({
-          ...dsfoContract,
-          functionName: 'totalSupply',
-        });
+        if (cancelled) return;
         setDsfoNFTCount(Number(nftCount));
         const ownershipPct =
           totalSupply === 0n ? 0 : (Number(nftCount) / Number(totalSupply)) * 100;
@@ -152,152 +327,13 @@ const FeesDashboard = () => {
       }
     };
 
-    if (userAddress && publicClient) {
-      fetchNFTData();
-    }
+    fetchNFTData();
+    return () => { cancelled = true; };
   }, [userAddress, publicClient, DSFONFTABI]);
-
-  // Fetch All Fees Data from API (for all users)
-  useEffect(() => {
-    const fetchAllFees = async () => {
-      try {
-        const response = await axios.get(apiUrl('getAllFeesPEAQ'));
-        const allFees = response.data;
-
-        let accumulatedTotalFees = {};
-
-        // Accumulate fees per token for all users by token symbol
-        allFees.forEach((fee) => {
-          const tokenSymbol = fee.token_symbol;
-
-          if (!accumulatedTotalFees[tokenSymbol]) {
-            accumulatedTotalFees[tokenSymbol] = parseFloat(fee.fees_amount);
-          } else {
-            accumulatedTotalFees[tokenSymbol] += parseFloat(fee.fees_amount);
-          }
-        });
-
-        setTotalFees(accumulatedTotalFees);
-      } catch (error) {
-        console.error('Error fetching all fees data:', error);
-      }
-    };
-
-    fetchAllFees();
-  }, []);
-
-  // Fetch User-Specific Fees from API
-  useEffect(() => {
-    const fetchUserFees = async () => {
-      try {
-        if (!userAddress || !publicClient) return;
-
-        const response = await axios.get(apiUrl(`getFeesPEAQ/${userAddress}`));
-        const userFeesData = response.data;
-
-        let accumulatedUserFees = {};
-
-        // Accumulate fees per token for the specific user by token symbol
-        userFeesData.forEach((fee) => {
-          const tokenSymbol = fee.token_symbol;
-
-          if (!accumulatedUserFees[tokenSymbol]) {
-            accumulatedUserFees[tokenSymbol] = parseFloat(fee.fees_amount);
-          } else {
-            accumulatedUserFees[tokenSymbol] += parseFloat(fee.fees_amount);
-          }
-        });
-
-        setUserFees(accumulatedUserFees);
-      } catch (error) {
-        console.error('Error fetching user fees data:', error);
-        setErrorMessage('Error fetching fees data.');
-        setLoading(false);
-      }
-    };
-
-    if (userAddress && publicClient) {
-      fetchUserFees();
-    }
-  }, [publicClient, userAddress]);
-
-  const calculateUsdFees = async (feesBySymbol) => {
-    if (!tokens || !Object.keys(tokens).length || !tokenPairs || !PEAQPrice) {
-      return {};
-    }
-
-    const result = {};
-
-    for (const [symbol, amount] of Object.entries(feesBySymbol)) {
-      if (symbol === 'PEAQ') continue;
-
-      const tokenData = Object.values(tokens).find(token => token.symbol === symbol);
-      if (!tokenData) continue;
-
-      let usdValue = 0;
-
-      if (symbol === 'WPEAQ') {
-        usdValue = amount * PEAQPrice;
-      } else {
-        for (const pairAddress in tokenPairs) {
-          const pair = tokenPairs[pairAddress];
-
-          if (
-            pair.token1_address === tokenData.address ||
-            pair.token2_address === tokenData.address
-          ) {
-            const pairContract = { address: getAddress(pairAddress), abi: UniswapV2PairABI };
-            const [reserve0, reserve1] = await publicClient.readContract({
-              ...pairContract,
-              functionName: 'getReserves',
-            });
-
-            let reserveWPEAQ, reserveToken;
-
-            if (getAddress(pair.token1_address) === WPEAQ_ADDRESS) {
-              reserveWPEAQ = parseFloat(formatUnits(reserve0, 18));
-              reserveToken = parseFloat(formatUnits(reserve1, tokenData.decimals));
-            } else {
-              reserveWPEAQ = parseFloat(formatUnits(reserve1, 18));
-              reserveToken = parseFloat(formatUnits(reserve0, tokenData.decimals));
-            }
-
-            const priceOfTokenInWPEAQ = reserveToken / reserveWPEAQ;
-            usdValue = priceOfTokenInWPEAQ * PEAQPrice * amount;
-            break;
-          }
-        }
-      }
-
-      result[symbol] = {
-        amount: amount.toFixed(6),
-        usd: usdValue.toFixed(2),
-        logo: tokens[tokenData.address]?.logo || '',
-      };
-    }
-
-    return result;
-  };
-
-  useEffect(() => {
-    if (Object.keys(totalFees).length > 0) {
-      calculateUsdFees(totalFees).then(setDexOverallUsdFees);
-    }
-  }, [totalFees, tokens, tokenPairs, PEAQPrice, publicClient, UniswapV2PairABI, WPEAQ_ADDRESS]);
-
-  useEffect(() => {
-    if (Object.keys(userFees).length > 0) {
-      calculateUsdFees(userFees).then((result) => {
-        setUsdFees(result);
-        setCalculationsDone(true);
-        setLoading(false);
-      });
-    }
-  }, [userFees, tokens, tokenPairs, PEAQPrice, publicClient, UniswapV2PairABI, WPEAQ_ADDRESS]);
 
   return (
     <DashboardContainer>
-      {loading || !calculationsDone ? (
+      {loading ? (
         <LoadingSpinner>
           <img src={MRBLLogo} alt="Loading" />
           <p>Fetching your Marbles...</p>

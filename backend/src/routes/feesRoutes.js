@@ -28,18 +28,6 @@ router.post('/insertFeesPEAQ', async (req, res) => {
     nft_count,
     nft_count_snapshot,
   } = req.body || {};
-  console.log('Insert Fees Request:', {
-    user_address,
-    token_symbol,
-    token_address,
-    fee_amount,
-    fee_amount_raw,
-    fee_amount_decimals,
-    block_height,
-    nft_count,
-    nft_count_snapshot,
-  });
-
   if (!user_address || !token_symbol) {
     return res.status(400).json({ error: 'user_address and token_symbol are required' });
   }
@@ -124,8 +112,6 @@ router.post('/insertFeesPEAQ', async (req, res) => {
 
 router.post('/updateBlockHeightPEAQ', async (req, res) => {
   const { block_height } = req.body || {};
-  console.log('Update Block Height Request:', { block_height });
-
   let blockHeightValue;
   try {
     blockHeightValue = ensureNonNegativeInteger(block_height, 'block_height');
@@ -142,7 +128,6 @@ router.post('/updateBlockHeightPEAQ', async (req, res) => {
        RETURNING last_height, last_seen_at`,
       [CHAIN_PEAQ, blockHeightValue]
     );
-    console.log('Update Block Height Result:', result.rows[0]);
     res.status(200).json({ success: true, progress: result.rows[0] });
   } catch (err) {
     console.error('Error in updateBlockHeight:', err);
@@ -152,7 +137,6 @@ router.post('/updateBlockHeightPEAQ', async (req, res) => {
 
 router.get('/getFeesPEAQ/:user_address', async (req, res) => {
   const { user_address } = req.params;
-  console.log('Fetching fees for user:', user_address);
 
   try {
     const result = await pool.query(
@@ -162,7 +146,6 @@ router.get('/getFeesPEAQ/:user_address', async (req, res) => {
         ORDER BY recorded_at DESC`,
       [CHAIN_PEAQ, user_address]
     );
-    console.log('Query result:', result.rows);
     res.status(200).json(result.rows);
   } catch (err) {
     console.error('Error in getFees:', err);
@@ -171,8 +154,6 @@ router.get('/getFeesPEAQ/:user_address', async (req, res) => {
 });
 
 router.get('/getAllFeesPEAQ', async (req, res) => {
-  console.log('Fetching all fees data');
-
   try {
     const result = await pool.query(
       `SELECT ${USER_FEES_COLUMNS}
@@ -181,7 +162,6 @@ router.get('/getAllFeesPEAQ', async (req, res) => {
         ORDER BY recorded_at DESC`,
       [CHAIN_PEAQ]
     );
-    console.log('All fees query result:', result.rows);
     res.status(200).json(result.rows);
   } catch (err) {
     console.error('Error in getAllFees:', err);
@@ -189,9 +169,45 @@ router.get('/getAllFeesPEAQ', async (req, res) => {
   }
 });
 
-router.get('/getLastBlockHeightPEAQ', async (req, res) => {
-  console.log('Fetching the last block height');
+router.get('/getAggregatedFeesPEAQ', async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT token_symbol,
+              SUM(fee_amount_raw::numeric / POWER(10::numeric, fee_amount_decimals)) AS total_amount
+         FROM user_fees
+        WHERE chain = $1
+        GROUP BY token_symbol
+        ORDER BY total_amount DESC`,
+      [CHAIN_PEAQ]
+    );
+    res.status(200).json(result.rows);
+  } catch (err) {
+    console.error('Error in getAggregatedFees:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
 
+router.get('/getAggregatedFeesPEAQ/:user_address', async (req, res) => {
+  const { user_address } = req.params;
+
+  try {
+    const result = await pool.query(
+      `SELECT token_symbol,
+              SUM(fee_amount_raw::numeric / POWER(10::numeric, fee_amount_decimals)) AS total_amount
+         FROM user_fees
+        WHERE chain = $1 AND user_address = $2
+        GROUP BY token_symbol
+        ORDER BY total_amount DESC`,
+      [CHAIN_PEAQ, user_address]
+    );
+    res.status(200).json(result.rows);
+  } catch (err) {
+    console.error('Error in getAggregatedUserFees:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+router.get('/getLastBlockHeightPEAQ', async (req, res) => {
   try {
     const result = await pool.query(
       'SELECT last_height FROM block_listener_progress WHERE chain = $1 LIMIT 1',
@@ -200,7 +216,6 @@ router.get('/getLastBlockHeightPEAQ', async (req, res) => {
     if (result.rows.length === 0) {
       res.status(404).json({ success: false, error: 'No block height found' });
     } else {
-      console.log('Last block height query result:', result.rows[0]);
       res.status(200).json({ block_height: result.rows[0].last_height });
     }
   } catch (err) {
