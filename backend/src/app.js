@@ -5,6 +5,7 @@ import marketRoutes from './routes/marketRoutes.js';
 import feesRoutes from './routes/feesRoutes.js';
 import dsfoRoutes from './routes/dsfoRoutes.js';
 import tokenRoutes from './routes/tokenRoutes.js';
+import nftRoutes from './routes/nftRoutes.js';
 import { startMemoryUsageLogger } from './services/memoryLogger.js';
 
 const createApp = () => {
@@ -26,6 +27,7 @@ const createApp = () => {
   app.use(feesRoutes);
   app.use(dsfoRoutes);
   app.use(tokenRoutes);
+  app.use(nftRoutes);
 
   return app;
 };
