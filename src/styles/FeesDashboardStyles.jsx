@@ -2,30 +2,40 @@ import styled from 'styled-components';
 
 export const DashboardContainer = styled.div`
   width: 100%;
-  overflow-x: auto;
-  margin: 20px;
+  margin: clamp(1rem, 3vw, 1.5rem) auto;
   background: #fcc375;
-  border-radius: 10px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  border-radius: 12px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+  color: #000000;
+  padding: clamp(1rem, 3vw, 1.5rem);
+`;
+
+export const TableWrapper = styled.div`
+  width: 100%;
+  border-radius: 20px;
+  overflow: hidden;
+  background: #f9d39f;
 `;
 
 export const Table = styled.table`
   width: 100%;
   border-collapse: collapse;
-  
+  border-spacing: 0;
   thead {
-    background: #fcc375;
+    background: #dbaa65;
+    border-radius: 12px;
   }
   tbody{
     width: 100%;
+    border-radius: 12px;
   }
   th, td {
-    padding: 25px 15px;
+    padding: clamp(1rem, 2vw, 1.5rem);
      background: #f9d39f;
     text-align: center;
     border-bottom: 1px solid #dbaa65;
     vertical-align: middle; /* Ensures that content aligns vertically */
-    height: 60px; /* Set a fixed height for all table cells */
+    height: auto;
   }
 
   th {
@@ -43,6 +53,46 @@ export const Table = styled.table`
     height: 32px;
     display: block; /* Ensure the image is treated as a block element */
     margin: 0 auto; /* Center the image horizontally */
+  }
+
+  @media (max-width: 768px) {
+    thead {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+    }
+
+    tbody {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    tr {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 0.75rem;
+      padding: 1rem;
+      border: 1px solid #dbaa65;
+      border-radius: 12px;
+      background: #fde1b4;
+    }
+
+    td {
+      border: none;
+      text-align: left;
+      background: transparent;
+      padding: 0;
+    }
+
+    td::before {
+      content: attr(data-label);
+      font-weight: 600;
+      display: inline-block;
+      margin-right: 0.5rem;
+    }
   }
 `;
 
@@ -102,31 +152,4 @@ export const ErrorMessage = styled.div`
   border: 1px solid #f5c6cb;
   border-radius: 4px;
   text-align: center;
-`;
-
-export const InfoContainer = styled.div`
-  display: flex;
-  justify-content: space-around;
-  margin-bottom: 20px;
-  padding: 10px;
-  background-color: #fcc375;
-  border-radius: 10px;
-`;
-
-export const InfoItem = styled.div`
-  font-size: 1.2rem;
-  color: #333;
-  font-weight: bold;
-  text-align: center;
-`;
-
-export const InfoLabel = styled.div`
-  font-size: 1rem;
-  color: #555;
-`;
-
-export const InfoValue = styled.div`
-  font-size: 1.5rem;
-  color: #000;
-  font-weight: bold;
 `;

@@ -1,0 +1,19 @@
+{
+  "name": "donnyswap-backend",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "@acelon/acelon-sdk": "^1.4.4",
+    "axios": "^1.13.2",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "^5.2.1",
+    "pg": "^8.12.0",
+    "viem": "^2.41.2"
+  }
+}
+

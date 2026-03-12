@@ -10,6 +10,7 @@ export const MintContainer = styled.div`
   border-radius: 10px;
   width: 100%;
   max-width: 400px;
+  color: #000000;
 `;
 
 export const MintInfoContainer = styled.div`
@@ -49,6 +50,17 @@ export const MintDetails = styled.div`
   margin-top: 15px;
   font-size: 0.9em;
   color: #2c2c2c;
+`;
+
+export const MintQuantityInput = styled.input`
+  margin-left: 10px;
+  padding: 5px 8px;
+  width: 80px;
+  border: 1px solid #b88c4a;
+  border-radius: 4px;
+  text-align: center;
+  background: #fff5e6;
+  color: #1b1b1b;
 `;
 
 export const ErrorMessage = styled.div`

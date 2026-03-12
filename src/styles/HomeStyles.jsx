@@ -7,11 +7,12 @@ export const HomeContainer = styled.div`
   background: #fcc375;
   border-radius: 10px;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-  max-width: 420px;
   display: inline-flex;
   flex-direction: column;
   align-items: center;
   background: #fcc375;
+  max-width: 600px;
+  color: #000000;
 `;
 
 export const SectionHeader = styled.h1`
@@ -19,6 +20,7 @@ export const SectionHeader = styled.h1`
   text-align: center;
   font-size: 2rem;
   margin-bottom: 20px;
+  color:rgb(0, 0, 0);
 `;
 
 export const SubSectionHeader = styled.h2`
@@ -33,6 +35,7 @@ export const FeatureList = styled.ol`
 
 export const FeatureItem = styled.li`
   margin-bottom: 20px;
+  margin-right: 20px;
 `;
 
 export const TokenInfo = styled.div`

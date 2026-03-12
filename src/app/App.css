@@ -1,0 +1,52 @@
+#root {
+  min-height: 100vh;
+  width: 100%;
+}
+
+.app-shell {
+  min-height: 100vh;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  padding: var(--app-shell-padding);
+  box-sizing: border-box;
+  background-image:
+    linear-gradient(var(--app-bg-tint), rgba(0, 0, 0, 0.75)),
+    var(--app-bg-image, linear-gradient(135deg, #120c06, #2a1404));
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-attachment: scroll;
+}
+
+.app-shell__content {
+  width: min(var(--app-content-max-width), 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--app-content-gap);
+  text-align: center;
+  color: #ffffff;
+  box-sizing: border-box;
+}
+
+.app-logo {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+.app-logo img {
+  width: clamp(140px, 30vw, 260px);
+  height: auto;
+}
+
+@media (max-width: 640px) {
+  .app-shell {
+    padding: var(--app-shell-padding-mobile);
+  }
+
+  .app-shell__content {
+    gap: 1.25rem;
+  }
+}
