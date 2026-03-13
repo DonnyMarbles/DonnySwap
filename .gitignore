@@ -28,5 +28,9 @@ dist-ssr
 **/.env
 **/.env.*
 
+# Hardhat
+artifacts/
+cache/
+
 # Claude Code
 .claude/
