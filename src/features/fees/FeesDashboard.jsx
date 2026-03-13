@@ -5,7 +5,7 @@ import { useTokens } from '../../contexts/TokenContext';
 import { useABI } from '../../contexts/ABIContext';
 import { usePEAQPrice } from '../../contexts/PEAQPriceContext';
 import { apiUrl } from '../../constants/api';
-import { WRAPPED_PEAQ_ADDRESS, DSFO_NFT_ADDRESS } from '../../constants/contracts';
+import { WRAPPED_PEAQ_ADDRESS, DSFO_NFT_ADDRESS, FEE_MANAGER_ADDRESS } from '../../constants/contracts';
 import {
   DashboardContainer,
   Table,
@@ -29,6 +29,7 @@ import {
   ToolbarStatCard,
 } from '../../styles/TokenPairsStyles';
 import { formatCurrency } from '../../lib/formatters';
+import { executeContractWrite } from '../../lib/viemHelpers';
 
 const safeNumber = (value) => {
   const numeric = Number(value);
@@ -53,34 +54,43 @@ const WPEAQ_ADDRESS = getAddress(WRAPPED_PEAQ_ADDRESS);
 
 const FeesDashboard = () => {
   const { tokens } = useTokens();
-  const { UniswapV2PairABI, DSFONFTABI } = useABI();
-  const { address: userAddress, publicClient } = useWallet();
+  const { UniswapV2PairABI, DSFONFTv3ABI, FeeManagerV2ABI } = useABI();
+  const { address: userAddress, publicClient, walletClient } = useWallet();
   const { PEAQPrice } = usePEAQPrice();
   const { tokenPairs } = useTokenPairsCtx();
 
   // Raw aggregated fees from API: { symbol: amount }
   const [dexFees, setDexFees] = useState({});
-  const [userFees, setUserFees] = useState({});
-  // Token USD prices (computed once, shared): { symbol: usdPricePerToken }
+  // On-chain claimable fees: { tokenAddress: { symbol, amount, decimals } }
+  const [claimableFees, setClaimableFees] = useState([]);
+  // Token USD prices: { symbol: usdPricePerToken }
   const [tokenPrices, setTokenPrices] = useState({});
 
   const [dexFeesLoaded, setDexFeesLoaded] = useState(false);
-  const [userFeesLoaded, setUserFeesLoaded] = useState(false);
   const [pricesLoaded, setPricesLoaded] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [claimLoading, setClaimLoading] = useState(false);
 
   const [dsfoNFTCount, setDsfoNFTCount] = useState(0);
+  const [activeSupply, setActiveSupply] = useState(0);
   const [ownershipPercentage, setOwnershipPercentage] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
   const [showEarningsOnly, setShowEarningsOnly] = useState(false);
 
   const priceComputeRef = useRef(false);
-
-  // Derive loading: show spinner until DEX fees + prices are ready
-  // (user fees are optional — only if wallet connected)
   const loading = !dexFeesLoaded || !pricesLoaded;
 
-  // Build rows from aggregated data + shared price map
+  // Build user fees from on-chain claimable data
+  const userFees = useMemo(() => {
+    const fees = {};
+    for (const entry of claimableFees) {
+      if (entry.amount > 0) {
+        fees[entry.symbol] = parseFloat(formatUnits(entry.amount, entry.decimals));
+      }
+    }
+    return fees;
+  }, [claimableFees]);
+
   const feeRows = useMemo(() => {
     const allSymbols = new Set([
       ...Object.keys(dexFees),
@@ -92,7 +102,6 @@ const FeesDashboard = () => {
         const dexAmount = safeNumber(dexFees[symbol]);
         const userAmount = safeNumber(userFees[symbol]);
         const pricePerToken = safeNumber(tokenPrices[symbol]);
-
         const tokenData = Object.values(tokens).find((t) => t.symbol === symbol);
         const logo = tokenData ? tokens[tokenData.address]?.logo || '' : '';
 
@@ -140,16 +149,75 @@ const FeesDashboard = () => {
   const handleToggleEarningsFilter = () => setShowEarningsOnly((prev) => !prev);
   const hasAnyRows = feeRows.length > 0;
   const ownershipDisplay = `${safeNumber(ownershipPercentage).toFixed(2)}%`;
+  const hasClaimable = claimableFees.some((f) => f.amount > 0n);
+
+  // ── Claim all fees on-chain ──
+  const handleClaimAll = async () => {
+    if (!walletClient || !publicClient || !userAddress) return;
+    setClaimLoading(true);
+    setErrorMessage('');
+    try {
+      await executeContractWrite({
+        publicClient,
+        walletClient,
+        account: userAddress,
+        address: getAddress(FEE_MANAGER_ADDRESS),
+        abi: FeeManagerV2ABI,
+        functionName: 'claimAllFees',
+      });
+      // Refresh claimable after claim
+      await fetchClaimable();
+    } catch (error) {
+      console.error('Claim error:', error);
+      setErrorMessage(error.message || 'An error occurred claiming fees.');
+    } finally {
+      setClaimLoading(false);
+    }
+  };
+
+  // ── Fetch on-chain claimable fees ──
+  const fetchClaimable = useCallback(async () => {
+    if (!userAddress || !publicClient || !FeeManagerV2ABI) return;
+    try {
+      const fmAddress = getAddress(FEE_MANAGER_ADDRESS);
+      const [tokenAddresses, amounts] = await publicClient.readContract({
+        address: fmAddress,
+        abi: FeeManagerV2ABI,
+        functionName: 'claimableAll',
+        args: [userAddress],
+      });
+
+      const entries = await Promise.all(
+        tokenAddresses.map(async (addr, i) => {
+          try {
+            const [symbol, decimals] = await Promise.all([
+              publicClient.readContract({ address: addr, abi: [{ type: 'function', name: 'symbol', inputs: [], outputs: [{ type: 'string' }], stateMutability: 'view' }], functionName: 'symbol' }),
+              publicClient.readContract({ address: addr, abi: [{ type: 'function', name: 'decimals', inputs: [], outputs: [{ type: 'uint8' }], stateMutability: 'view' }], functionName: 'decimals' }),
+            ]);
+            return { address: addr, symbol, decimals: Number(decimals), amount: amounts[i] };
+          } catch {
+            return { address: addr, symbol: 'UNKNOWN', decimals: 18, amount: amounts[i] };
+          }
+        })
+      );
+
+      setClaimableFees(entries);
+    } catch (error) {
+      console.error('Error fetching claimable fees:', error);
+    }
+  }, [userAddress, publicClient, FeeManagerV2ABI]);
+
+  useEffect(() => {
+    fetchClaimable();
+  }, [fetchClaimable]);
 
   // ── Fetch DEX-wide aggregated fees ──
   useEffect(() => {
     let cancelled = false;
-
     const fetchDexFees = async () => {
       try {
         const response = await axios.get(apiUrl('getAggregatedFeesPEAQ'));
         if (cancelled) return;
-
         const aggregated = {};
         (response.data || []).forEach((row) => {
           aggregated[row.token_symbol] = parseFloat(row.total_amount);
@@ -162,89 +230,34 @@ const FeesDashboard = () => {
         if (!cancelled) setDexFeesLoaded(true);
       }
     };
-
     fetchDexFees();
     return () => { cancelled = true; };
   }, []);
 
-  // ── Fetch user-specific aggregated fees ──
-  useEffect(() => {
-    if (!userAddress) {
-      setUserFees({});
-      setUserFeesLoaded(true);
-      return;
-    }
-
-    let cancelled = false;
-
-    const fetchUserFees = async () => {
-      try {
-        const response = await axios.get(apiUrl(`getAggregatedFeesPEAQ/${userAddress}`));
-        if (cancelled) return;
-
-        const aggregated = {};
-        (response.data || []).forEach((row) => {
-          aggregated[row.token_symbol] = parseFloat(row.total_amount);
-        });
-        setUserFees(aggregated);
-      } catch (err) {
-        console.error('Error fetching user fees:', err);
-        if (!cancelled) setErrorMessage('Error fetching fees data.');
-      } finally {
-        if (!cancelled) setUserFeesLoaded(true);
-      }
-    };
-
-    fetchUserFees();
-    return () => { cancelled = true; };
-  }, [userAddress]);
-
-  // ── Compute token→USD prices once (shared for both DEX and user) ──
+  // ── Compute token USD prices ──
   const computeTokenPrices = useCallback(async () => {
-    if (!tokens || !Object.keys(tokens).length || !tokenPairs || !PEAQPrice || !publicClient || !UniswapV2PairABI) {
-      return;
-    }
+    if (!tokens || !Object.keys(tokens).length || !tokenPairs || !PEAQPrice || !publicClient || !UniswapV2PairABI) return;
 
-    // Gather all unique symbols that need pricing
     const allSymbols = new Set([...Object.keys(dexFees), ...Object.keys(userFees)]);
-    if (allSymbols.size === 0) {
-      setPricesLoaded(true);
-      return;
-    }
+    if (allSymbols.size === 0) { setPricesLoaded(true); return; }
 
     const prices = {};
+    if (allSymbols.has('PEAQ')) { prices.PEAQ = PEAQPrice; allSymbols.delete('PEAQ'); }
+    if (allSymbols.has('WPEAQ')) { prices.WPEAQ = PEAQPrice; allSymbols.delete('WPEAQ'); }
 
-    // PEAQ and WPEAQ are priced directly
-    if (allSymbols.has('PEAQ')) {
-      prices.PEAQ = PEAQPrice;
-      allSymbols.delete('PEAQ');
-    }
-    if (allSymbols.has('WPEAQ')) {
-      prices.WPEAQ = PEAQPrice;
-      allSymbols.delete('WPEAQ');
-    }
-
-    // For remaining tokens, find their pair with WPEAQ and batch-fetch reserves
     const pairLookups = [];
     for (const symbol of allSymbols) {
       const tokenData = Object.values(tokens).find((t) => t.symbol === symbol);
       if (!tokenData) continue;
-
       for (const pairAddress in tokenPairs) {
         const pair = tokenPairs[pairAddress];
         if (pair.token1_address === tokenData.address || pair.token2_address === tokenData.address) {
-          pairLookups.push({
-            symbol,
-            tokenData,
-            pairAddress: getAddress(pairAddress),
-            pair,
-          });
+          pairLookups.push({ symbol, tokenData, pairAddress: getAddress(pairAddress), pair });
           break;
         }
       }
     }
 
-    // Batch all getReserves calls in parallel
     if (pairLookups.length > 0) {
       try {
         const reserveResults = await Promise.all(
@@ -260,7 +273,6 @@ const FeesDashboard = () => {
         reserveResults.forEach(([reserve0, reserve1], index) => {
           const { symbol, tokenData, pair } = pairLookups[index];
           let reserveWPEAQ, reserveToken;
-
           if (getAddress(pair.token1_address) === WPEAQ_ADDRESS) {
             reserveWPEAQ = parseFloat(formatUnits(reserve0, 18));
             reserveToken = parseFloat(formatUnits(reserve1, tokenData.decimals));
@@ -268,13 +280,7 @@ const FeesDashboard = () => {
             reserveWPEAQ = parseFloat(formatUnits(reserve1, 18));
             reserveToken = parseFloat(formatUnits(reserve0, tokenData.decimals));
           }
-
-          if (reserveToken > 0) {
-            const priceInWPEAQ = reserveWPEAQ / reserveToken;
-            prices[symbol] = priceInWPEAQ * PEAQPrice;
-          } else {
-            prices[symbol] = 0;
-          }
+          prices[symbol] = reserveToken > 0 ? (reserveWPEAQ / reserveToken) * PEAQPrice : 0;
         });
       } catch (err) {
         console.error('Error batch-fetching reserves for USD pricing:', err);
@@ -287,41 +293,29 @@ const FeesDashboard = () => {
 
   useEffect(() => {
     if (!dexFeesLoaded) return;
-
-    // Only compute once per data change
     if (priceComputeRef.current) return;
     priceComputeRef.current = true;
-
-    computeTokenPrices().finally(() => {
-      priceComputeRef.current = false;
-    });
+    computeTokenPrices().finally(() => { priceComputeRef.current = false; });
   }, [dexFeesLoaded, computeTokenPrices]);
 
-  // ── Fetch NFT ownership data ──
+  // ── Fetch NFT ownership (v3: activeSupply) ──
   useEffect(() => {
-    if (!userAddress || !publicClient || !DSFONFTABI) return;
+    if (!userAddress || !publicClient || !DSFONFTv3ABI) return;
     let cancelled = false;
 
     const fetchNFTData = async () => {
       try {
-        const dsfoContract = { address: getAddress(DSFO_NFT_ADDRESS), abi: DSFONFTABI };
-        const [nftCount, totalSupply] = await Promise.all([
-          publicClient.readContract({
-            ...dsfoContract,
-            functionName: 'balanceOf',
-            args: [userAddress],
-          }),
-          publicClient.readContract({
-            ...dsfoContract,
-            functionName: 'totalSupply',
-          }),
+        const dsfoContract = { address: getAddress(DSFO_NFT_ADDRESS), abi: DSFONFTv3ABI };
+        const [nftCount, supply] = await Promise.all([
+          publicClient.readContract({ ...dsfoContract, functionName: 'balanceOf', args: [userAddress] }),
+          publicClient.readContract({ ...dsfoContract, functionName: 'activeSupply' }),
         ]);
 
         if (cancelled) return;
         setDsfoNFTCount(Number(nftCount));
-        const ownershipPct =
-          totalSupply === 0n ? 0 : (Number(nftCount) / Number(totalSupply)) * 100;
-        setOwnershipPercentage(ownershipPct.toFixed(2));
+        setActiveSupply(Number(supply));
+        const pct = supply === 0n ? 0 : (Number(nftCount) / Number(supply)) * 100;
+        setOwnershipPercentage(pct.toFixed(2));
       } catch (error) {
         console.error('Error fetching NFT data:', error);
       }
@@ -329,7 +323,7 @@ const FeesDashboard = () => {
 
     fetchNFTData();
     return () => { cancelled = true; };
-  }, [userAddress, publicClient, DSFONFTABI]);
+  }, [userAddress, publicClient, DSFONFTv3ABI]);
 
   return (
     <DashboardContainer>
@@ -368,13 +362,13 @@ const FeesDashboard = () => {
                 <span>Across shown tokens</span>
               </ToolbarStatCard>
               <ToolbarStatCard>
-                <h4>Your Fees (USD)</h4>
+                <h4>Claimable (USD)</h4>
                 <p>{formatCurrency(toolbarStats.userUsd)}</p>
                 <span>{`${toolbarStats.earningTokens} earning tokens`}</span>
               </ToolbarStatCard>
               <ToolbarStatCard>
                 <h4>Top Earning Token</h4>
-                <p>{toolbarStats.topToken ? toolbarStats.topToken.symbol : '—'}</p>
+                <p>{toolbarStats.topToken ? toolbarStats.topToken.symbol : '\u2014'}</p>
                 <span>
                   {toolbarStats.topToken
                     ? formatCurrency(toolbarStats.topToken.userUsd)
@@ -384,7 +378,7 @@ const FeesDashboard = () => {
               <ToolbarStatCard>
                 <h4>DSFO NFTs</h4>
                 <p>{dsfoNFTCount}</p>
-                <span>Owned tokens</span>
+                <span>{activeSupply} active supply</span>
               </ToolbarStatCard>
               <ToolbarStatCard>
                 <h4>DEX Ownership</h4>
@@ -392,6 +386,25 @@ const FeesDashboard = () => {
                 <span>Share via DSFO NFTs</span>
               </ToolbarStatCard>
             </ToolbarStatsGrid>
+            {hasClaimable && userAddress && (
+              <div style={{ marginTop: '12px', textAlign: 'center' }}>
+                <button
+                  onClick={handleClaimAll}
+                  disabled={claimLoading || !walletClient}
+                  style={{
+                    padding: '10px 24px',
+                    background: '#dbaa65',
+                    border: 'none',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontWeight: 'bold',
+                    fontSize: '1em',
+                  }}
+                >
+                  {claimLoading ? 'Claiming...' : 'Claim All Fees'}
+                </button>
+              </div>
+            )}
             <br />
           </Toolbar>
           {!hasAnyRows ? (
@@ -407,8 +420,8 @@ const FeesDashboard = () => {
                   <TableRow>
                     <TableHead>Total DEX Fees Overall</TableHead>
                     <TableHead>Total DEX Fees in USD</TableHead>
-                    <TableHead>Your Total Fees Earned</TableHead>
-                    <TableHead>Your Fees Earned in USD</TableHead>
+                    <TableHead>Your Claimable Fees</TableHead>
+                    <TableHead>Your Fees in USD</TableHead>
                   </TableRow>
                 </thead>
                 <tbody>
@@ -421,11 +434,11 @@ const FeesDashboard = () => {
                       <TableCell data-label="Total DEX Fees in USD">
                         {formatUsdWithFloor(row.dexUsd)}
                       </TableCell>
-                      <TableCell data-label="Your Total Fees Earned">
+                      <TableCell data-label="Your Claimable Fees">
                         {row.logo && <img src={row.logo} alt={`${row.symbol} logo`} />}
                         {formatTokenAmount(row.userAmount)} <b>{row.symbol}</b>
                       </TableCell>
-                      <TableCell data-label="Your Fees Earned in USD">
+                      <TableCell data-label="Your Fees in USD">
                         {formatUsdWithFloor(row.userUsd)}
                       </TableCell>
                     </TableRow>

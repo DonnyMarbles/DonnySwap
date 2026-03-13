@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { formatUnits, parseUnits, getAddress } from 'viem';
-import axios from 'axios';
+import { formatUnits, getAddress } from 'viem';
 import { useABI } from '../../contexts/ABIContext';
 import {
   MintContainer,
@@ -13,8 +12,7 @@ import {
 } from '../../styles/MintDSFONFTStyles';
 import { useWallet } from '../../contexts/WalletContext';
 import { executeContractWrite } from '../../lib/viemHelpers';
-import { apiUrl } from '../../constants/api';
-import { DSFO_NFT_ADDRESS, MRBL_WPEAQ_PAIR_ADDRESS } from '../../constants/contracts';
+import { DSFO_NFT_ADDRESS, MRBL_WPEAQ_PAIR_ADDRESS, LP_VAULT_ADDRESS } from '../../constants/contracts';
 import dsfoMintBackground from '../../assets/DSFO_Mint.jpg';
 import dsfoNftImage from '../../assets/donny_ticket_final.jpg';
 import WPEAQLogo from '../../assets/WPEAQ_logo.png';
@@ -44,141 +42,94 @@ const MintDSFONFT = () => {
     const dsfoContractAddress = getAddress(DSFO_NFT_ADDRESS);
     const mrblWPEAQPairAddress = getAddress(MRBL_WPEAQ_PAIR_ADDRESS);
     const { publicClient, walletClient, address: userAddress } = useWallet();
-    const { DSFONFTABI, UniswapV2PairABI, ERC20ABI } = useABI();
+    const { DSFONFTv3ABI, ERC20ABI, LPVaultABI } = useABI();
     const [loading, setLoading] = useState(false);
     const [errorMessage, setErrorMessage] = useState('');
     const [approved, setApproved] = useState(false);
     const [ownershipPercentage, setOwnershipPercentage] = useState(null);
-    const [totalWPEAQReceived, setTotalWPEAQReceived] = useState(null);
-    const [totalMRBLReceived, setTotalMRBLReceived] = useState(null);
     const [blockNumber, setBlockNumber] = useState(null);
-    const [mintPrice, setMintPrice] = useState(null);
     const [mintQuantity, setMintQuantity] = useState(1);
     const [lpTokenBalance, setLpTokenBalance] = useState(null);
-    const [totalSupply, setTotalSupply] = useState(null);
+    const [activeSupply, setActiveSupply] = useState(null);
     const [nftBalance, setNftBalance] = useState(null);
     const [allowance, setAllowance] = useState(null);
-    const totalMintCost = useMemo(() => {
-        if (mintPrice === null) {
-            return null;
-        }
-        return mintPrice * BigInt(mintQuantity);
-    }, [mintPrice, mintQuantity]);
+    const [currentPrice, setCurrentPrice] = useState(null);
+    const [batchPrice, setBatchPrice] = useState(null);
+    const [basePrice, setBasePrice] = useState(null);
+    const [priceStep, setPriceStep] = useState(null);
+    const [vaultHealth, setVaultHealth] = useState(null);
 
-    // Set up block number polling
+    // Block number polling
     useEffect(() => {
         const fetchBlockNumber = async () => {
             if (!publicClient) return;
             const blockNum = await publicClient.getBlockNumber();
             setBlockNumber(Number(blockNum));
         };
-
         const intervalId = setInterval(fetchBlockNumber, 5000);
         fetchBlockNumber();
-
         return () => clearInterval(intervalId);
     }, [publicClient]);
 
-    // Fetch fees from the API
-    useEffect(() => {
-        const fetchFees = async () => {
-            if (userAddress) {
-                try {
-                    const response = await axios.get(apiUrl(`getFeesPEAQ/${userAddress}`));
-                    const fees = response.data;
-
-                    let totalWPEAQ = 0n;
-                    let totalMRBL = 0n;
-
-                    fees.forEach(fee => {
-                        if (fee.token_symbol === 'WPEAQ') {
-                            totalWPEAQ += parseUnits(fee.fees_amount, 18);
-                        } else if (fee.token_symbol === 'MRBL') {
-                            totalMRBL += parseUnits(fee.fees_amount, 18);
-                        }
-                    });
-
-                    setTotalWPEAQReceived(totalWPEAQ);
-                    setTotalMRBLReceived(totalMRBL);
-                } catch (error) {
-                    console.error("Error fetching fees from API:", error);
-                }
-            }
-        };
-
-        fetchFees();
-    }, [userAddress]);
-
     const refreshContractState = useCallback(async () => {
-        if (!publicClient) {
-            return;
-        }
+        if (!publicClient) return;
         try {
-            const dsfoContract = { address: dsfoContractAddress, abi: DSFONFTABI };
-            const pairContract = { address: mrblWPEAQPairAddress, abi: UniswapV2PairABI };
-            const lpTokenContract = { address: mrblWPEAQPairAddress, abi: ERC20ABI };
+            const dsfo = { address: dsfoContractAddress, abi: DSFONFTv3ABI };
+            const lpToken = { address: mrblWPEAQPairAddress, abi: ERC20ABI };
+            const vault = { address: getAddress(LP_VAULT_ADDRESS), abi: LPVaultABI };
 
-            const [price, supply, userNftBalance, userLpBalance, currentAllowance] =
-                await Promise.all([
-                    publicClient.readContract({ ...dsfoContract, functionName: 'mintPrice' }),
-                    publicClient.readContract({ ...dsfoContract, functionName: 'totalSupply' }),
-                    userAddress
-                        ? publicClient.readContract({
-                              ...dsfoContract,
-                              functionName: 'balanceOf',
-                              args: [userAddress],
-                          })
-                        : Promise.resolve(0n),
-                    userAddress
-                        ? publicClient.readContract({
-                              ...pairContract,
-                              functionName: 'balanceOf',
-                              args: [userAddress],
-                          })
-                        : Promise.resolve(0n),
-                    userAddress
-                        ? publicClient.readContract({
-                              ...lpTokenContract,
-                              functionName: 'allowance',
-                              args: [userAddress, dsfoContractAddress],
-                          })
-                        : Promise.resolve(0n),
-                ]);
+            const results = await Promise.all([
+                publicClient.readContract({ ...dsfo, functionName: 'currentMintPrice' }),
+                publicClient.readContract({ ...dsfo, functionName: 'activeSupply' }),
+                publicClient.readContract({ ...dsfo, functionName: 'basePrice' }),
+                publicClient.readContract({ ...dsfo, functionName: 'priceStep' }),
+                publicClient.readContract({ ...dsfo, functionName: 'batchMintPrice', args: [BigInt(mintQuantity)] }),
+                userAddress
+                    ? publicClient.readContract({ ...dsfo, functionName: 'balanceOf', args: [userAddress] })
+                    : Promise.resolve(0n),
+                userAddress
+                    ? publicClient.readContract({ ...lpToken, functionName: 'balanceOf', args: [userAddress] })
+                    : Promise.resolve(0n),
+                userAddress
+                    ? publicClient.readContract({ ...lpToken, functionName: 'allowance', args: [userAddress, dsfoContractAddress] })
+                    : Promise.resolve(0n),
+                publicClient.readContract({ ...vault, functionName: 'vaultHealthBps' }).catch(() => null),
+            ]);
 
-            setMintPrice(price);
-            setTotalSupply(supply);
-            setNftBalance(userNftBalance);
-            setLpTokenBalance(userLpBalance);
-            setAllowance(currentAllowance);
+            setCurrentPrice(results[0]);
+            setActiveSupply(results[1]);
+            setBasePrice(results[2]);
+            setPriceStep(results[3]);
+            setBatchPrice(results[4]);
+            setNftBalance(results[5]);
+            setLpTokenBalance(results[6]);
+            setAllowance(results[7]);
+            setVaultHealth(results[8]);
         } catch (error) {
             console.error('Error refreshing DSFO contract state:', error);
         }
-    }, [publicClient, userAddress, DSFONFTABI, UniswapV2PairABI, ERC20ABI, dsfoContractAddress, mrblWPEAQPairAddress]);
+    }, [publicClient, userAddress, DSFONFTv3ABI, ERC20ABI, LPVaultABI, dsfoContractAddress, mrblWPEAQPairAddress, mintQuantity]);
 
     useEffect(() => {
         refreshContractState();
     }, [refreshContractState, blockNumber]);
 
     useEffect(() => {
-        if (allowance !== null && totalMintCost !== null) {
-            setApproved(allowance >= totalMintCost);
+        if (allowance !== null && batchPrice !== null) {
+            setApproved(allowance >= batchPrice);
         } else {
             setApproved(false);
         }
-    }, [allowance, totalMintCost]);
+    }, [allowance, batchPrice]);
 
     useEffect(() => {
-        if (nftBalance !== null && totalSupply !== null && totalSupply > 0n) {
-            const owned = Number(nftBalance);
-            const total = Number(totalSupply);
-            if (total > 0) {
-                const percentage = ((owned / total) * 100).toFixed(2);
-                setOwnershipPercentage(percentage);
-                return;
-            }
+        if (nftBalance !== null && activeSupply !== null && activeSupply > 0n) {
+            const percentage = ((Number(nftBalance) / Number(activeSupply)) * 100).toFixed(2);
+            setOwnershipPercentage(percentage);
+        } else {
+            setOwnershipPercentage(null);
         }
-        setOwnershipPercentage(null);
-    }, [nftBalance, totalSupply]);
+    }, [nftBalance, activeSupply]);
 
     const handleQuantityChange = (event) => {
         const value = Number(event.target.value);
@@ -186,7 +137,7 @@ const MintDSFONFT = () => {
             setMintQuantity(1);
             return;
         }
-        setMintQuantity(Math.floor(value));
+        setMintQuantity(Math.min(Math.floor(value), 50));
     };
 
     const handleApprove = async () => {
@@ -194,14 +145,13 @@ const MintDSFONFT = () => {
             setErrorMessage('Please connect your wallet to approve.');
             return;
         }
-        if (totalMintCost === null) {
-            setErrorMessage('Mint price not available yet. Please try again.');
+        if (batchPrice === null) {
+            setErrorMessage('Mint price not available yet.');
             return;
         }
         setLoading(true);
         setErrorMessage('');
         try {
-            const amountToApprove = totalMintCost;
             await executeContractWrite({
                 publicClient,
                 walletClient,
@@ -209,7 +159,7 @@ const MintDSFONFT = () => {
                 address: mrblWPEAQPairAddress,
                 abi: ERC20ABI,
                 functionName: 'approve',
-                args: [dsfoContractAddress, amountToApprove],
+                args: [dsfoContractAddress, batchPrice],
             });
             const updatedAllowance = await publicClient.readContract({
                 address: mrblWPEAQPairAddress,
@@ -231,12 +181,12 @@ const MintDSFONFT = () => {
             setErrorMessage('Please connect your wallet to mint.');
             return;
         }
-        if (totalMintCost === null) {
-            setErrorMessage('Mint price not available yet. Please try again.');
+        if (batchPrice === null) {
+            setErrorMessage('Mint price not available yet.');
             return;
         }
-        if (lpTokenBalance !== null && lpTokenBalance < totalMintCost) {
-            setErrorMessage('Insufficient LP token balance for the selected quantity.');
+        if (lpTokenBalance !== null && lpTokenBalance < batchPrice) {
+            setErrorMessage('Insufficient LP token balance.');
             return;
         }
         setLoading(true);
@@ -247,8 +197,8 @@ const MintDSFONFT = () => {
                 walletClient,
                 account: userAddress,
                 address: dsfoContractAddress,
-                abi: DSFONFTABI,
-                functionName: 'mintDSFONFT',
+                abi: DSFONFTv3ABI,
+                functionName: 'mint',
                 args: [BigInt(mintQuantity)],
             });
             await refreshContractState();
@@ -267,72 +217,66 @@ const MintDSFONFT = () => {
             <h3>Mint DSFO NFT</h3>
             <MintInfoContainer>
                 <img src={dsfoNftImage} alt="DSFO Mint" />
+
                 <MintDetails>
-                    Mint Price: {mintPrice ? formatUnits(mintPrice, 18) : 'Loading...'} <img src={WPEAQLogo} width={18} alt="WPEAQ logo" /><img src={MRBLLogo} width={18} alt="MRBL logo" /> WPEAQ-MRBL LP Tokens
+                    Current Mint Price: {currentPrice ? formatUnits(currentPrice, 18) : 'Loading...'} <img src={WPEAQLogo} width={18} alt="WPEAQ" /><img src={MRBLLogo} width={18} alt="MRBL" /> LP
                 </MintDetails>
+                {basePrice && priceStep && (
+                    <MintDetails style={{ fontSize: '0.8em', color: '#555' }}>
+                        Pricing: {formatUnits(basePrice, 18)} + ({activeSupply?.toString() || '0'} x {formatUnits(priceStep, 18)}) LP per NFT
+                    </MintDetails>
+                )}
+
                 <MintDetails>
                     Mint Quantity:
                     <MintQuantityInput
                         type="number"
                         min={1}
+                        max={50}
                         value={mintQuantity}
                         onChange={handleQuantityChange}
                     />
                 </MintDetails>
+
                 <MintDetails>
-                    Total Cost: {totalMintCost !== null
-                        ? (
-                            <>
-                                {formatUnits(totalMintCost, 18)} <img src={WPEAQLogo} width={18} alt="WPEAQ logo" /><img src={MRBLLogo} width={18} alt="MRBL logo" /> WPEAQ-MRBL LP Tokens
-                            </>
-                        )
+                    Total Cost: {batchPrice !== null
+                        ? (<>{formatUnits(batchPrice, 18)} <img src={WPEAQLogo} width={18} alt="WPEAQ" /><img src={MRBLLogo} width={18} alt="MRBL" /> LP</>)
                         : 'Loading...'}
                 </MintDetails>
+
                 <MintDetails>
-                    Your LP Token Balance: {lpTokenBalance !== null ? formatUnits(lpTokenBalance, 18) : 'Loading...'} LP Tokens
+                    LP Split: 70% burned (permanent liquidity) / 30% to vault (redeemable)
                 </MintDetails>
+
                 <MintDetails>
-                    Your DSFO NFT Balance: {nftBalance !== null ? nftBalance.toString() : 'Loading...'} NFTs
+                    Your LP Balance: {lpTokenBalance !== null ? formatUnits(lpTokenBalance, 18) : 'Loading...'} LP
                 </MintDetails>
+
                 <MintDetails>
-                    Your Ownership Percentage of the DEX: {ownershipPercentage !== null ? ownershipPercentage + '%' : 'Loading...'}
+                    Your DSFO NFTs: {nftBalance !== null ? nftBalance.toString() : 'Loading...'} | Active Supply: {activeSupply !== null ? activeSupply.toString() : '...'}
                 </MintDetails>
+
                 <MintDetails>
-                    Your Total WPEAQ DEX Fees earned: {totalWPEAQReceived !== null
-                        ? (
-                            <>
-                                {parseFloat(formatUnits(totalWPEAQReceived, 18)).toFixed(6)} <img src={WPEAQLogo} width={18} alt="WPEAQ logo" /> WPEAQ
-                            </>
-                        )
-                        : 'Loading...'}
+                    DEX Ownership: {ownershipPercentage !== null ? ownershipPercentage + '%' : 'Loading...'}
                 </MintDetails>
-                <MintDetails>
-                    Your Total MRBL DEX Fees earned: {totalMRBLReceived !== null
-                        ? (
-                            <>
-                                {parseFloat(formatUnits(totalMRBLReceived, 18)).toFixed(6)} <img src={MRBLLogo} width={18} alt="MRBL logo" /> MRBL
-                            </>
-                        )
-                        : 'Loading...'}
-                </MintDetails>
+
+                {vaultHealth !== null && (
+                    <MintDetails>
+                        Vault Health: {(Number(vaultHealth) / 100).toFixed(1)}%
+                    </MintDetails>
+                )}
             </MintInfoContainer>
+
             {approved ? (
                 <MintButton
                     onClick={handleMint}
-                    disabled={
-                        loading ||
-                        mintPrice === null ||
-                        lpTokenBalance === null ||
-                        totalMintCost === null ||
-                        !walletClient ||
-                        lpTokenBalance < totalMintCost
-                    }
+                    disabled={loading || batchPrice === null || lpTokenBalance === null || !walletClient || lpTokenBalance < batchPrice}
                 >
                     {loading ? <LoadingSpinner /> : mintButtonLabel}
                 </MintButton>
             ) : (
-                <MintButton onClick={handleApprove} disabled={loading || mintPrice === null || !walletClient || totalMintCost === null}>
-                    {loading ? <LoadingSpinner /> : 'Approve'}
+                <MintButton onClick={handleApprove} disabled={loading || batchPrice === null || !walletClient}>
+                    {loading ? <LoadingSpinner /> : 'Approve LP'}
                 </MintButton>
             )}
             {errorMessage && <ErrorMessage>{errorMessage}</ErrorMessage>}

@@ -1,5 +1,4 @@
 import { encodeAddress, decodeAddress, blake2AsHex } from '@polkadot/util-crypto';
-import { Buffer } from 'buffer';
 
 export const ADDRESS_FORMAT = {
   ss58: 'SS58',
@@ -11,11 +10,25 @@ export const CHAIN_PREFIX = {
   ss58: 42,
 };
 
+function hexToBytes(hex) {
+  const bytes = new Uint8Array(hex.length / 2);
+  for (let i = 0; i < bytes.length; i++) {
+    bytes[i] = parseInt(hex.substr(i * 2, 2), 16);
+  }
+  return bytes;
+}
+
+function bytesToHex(bytes) {
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+}
+
 export function convertH160ToSs58(h160Addr) {
   validateH160(h160Addr);
-  const addressBytes = Buffer.from(h160Addr.slice(2), 'hex');
-  const prefixBytes = Buffer.from('evm:');
-  const convertBytes = Uint8Array.from(Buffer.concat([ prefixBytes, addressBytes ]));
+  const addressBytes = hexToBytes(h160Addr.slice(2));
+  const prefixBytes = new TextEncoder().encode('evm:');
+  const convertBytes = new Uint8Array(prefixBytes.length + addressBytes.length);
+  convertBytes.set(prefixBytes);
+  convertBytes.set(addressBytes, prefixBytes.length);
   const finalAddressHex = blake2AsHex(convertBytes, 256);
   return encodeAddress(finalAddressHex, CHAIN_PREFIX.ss58);
 }
@@ -28,7 +41,7 @@ export function convertSs58ToH160(ss58Addr) {
 }
 
 export function getPubKey(ss58addr) {
-  return '0x' + Buffer.from(decodeAddress(ss58addr)).toString('hex');
+  return '0x' + bytesToHex(decodeAddress(ss58addr));
 }
 
 export function encodePubKey(pubKey, prefix) {

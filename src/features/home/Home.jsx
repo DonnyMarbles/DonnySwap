@@ -12,19 +12,21 @@ import {
 } from '../../styles/HomeStyles';
 import MRBLLogo from '../../assets/MRBL_logo.png';
 import WPEAQLogo from '../../assets/WPEAQ_logo.png';
-import { FACTORY_ADDRESS, WRAPPED_PEAQ_ADDRESS } from '../../constants/contracts';
+import { FACTORY_ADDRESS, WRAPPED_PEAQ_ADDRESS, DSFO_NFT_ADDRESS, FEE_MANAGER_ADDRESS, LP_VAULT_ADDRESS, FEE_SPLITTER_ADDRESS } from '../../constants/contracts';
+
+const subscanLink = (addr) => `https://peaq.subscan.io/account/${addr}?tab=contract`;
 
 const Home = () => {
   return (
     <HomeContainer>
       <FeatureList>
-      <SectionHeader>Welcome to DonnySwap!<br />v2.0.0</SectionHeader>
+      <SectionHeader>Welcome to DonnySwap!<br />v3.0.0</SectionHeader>
       <ExternalLink href="https://x.com/Donny_Marbles" target="_blank">
         <TokenImage src={MRBLLogo} alt="Token Logo" width="60" />
       </ExternalLink>
       <SectionHeader>Current features</SectionHeader>
 
-      
+
         <FeatureItem>
           <SubSectionHeader>🔁 Swap Tokens</SubSectionHeader>
           <p><b>Swap</b>: Native PEAQ (PEAQ) or ERC-20s</p>
@@ -50,9 +52,12 @@ const Home = () => {
         </FeatureItem>
 
         <FeatureItem>
-          <SubSectionHeader>🆕 DSFO NFTs</SubSectionHeader>
-          <p>Become a part owner of DonnySwap!<br/> By minting a DSFO NFT you receive a 
-          proportional portion<br/> of every trade made on the DEX</p> *Distributed every 4 hours* <br/> Subject to change by governance vote in future
+          <SubSectionHeader>👑 DSFO NFTs v3 — Soulbound Fractional Ownership</SubSectionHeader>
+          <p>Become a part owner of DonnySwap by minting soulbound DSFO NFTs.</p>
+          <p><b>Dynamic pricing</b>: price increases with each mint (linear bonding curve)</p>
+          <p><b>70/30 LP split</b>: 70% of your LP is burned forever (permanent liquidity),<br/> 30% goes to the LP Vault (redeemable over time)</p>
+          <p><b>Earn fees</b>: proportional share of every trade on the DEX<br/> *Claim-based — claim anytime from the Fee Dashboard*</p>
+          <p><b>Redeem</b>: burn your NFT to reclaim LP from the vault<br/> (time-weighted, better value the longer you hold)</p>
         </FeatureItem>
 
         <FeatureItem>
@@ -70,11 +75,14 @@ const Home = () => {
           <TokenInfo>
             <TokenImage src={WPEAQLogo} alt="WPEAQ Logo" width="20" /> DonnySwap Wrapped PEAQ (WPEAQ) Contract: <ContractLink href={`https://peaq.subscan.io/token/${WRAPPED_PEAQ_ADDRESS}`} target="_blank">Subscan</ContractLink>
           </TokenInfo>
-          <SubSectionHeader>Backend Contracts:</SubSectionHeader>
-          <p>🦄 UniswapV2Router02 Contract: <ContractLink href="https://repo.sourcify.dev/3338/0xBa6777062F71318de6b681370189055904e20D21" target="_blank">Sourcify</ContractLink></p>
-          <p>🍣 SushiSwapFactory Contract: <ContractLink href="https://repo.sourcify.dev/3338/0x60659f5997C8D58DC4E4dcC1bdB89E8f62Be40E6" target="_blank">Sourcify</ContractLink></p>
-          <p>🎯 FeeManager Contract: <ContractLink href="https://repo.sourcify.dev/3338/0x9cE36CdD9B164a686F4B9AE728f5f68b7b41acaa/" target="_blank">Sourcify</ContractLink></p>
-          <p>👑 DSFO NFT Contract: <ContractLink href="https://repo.sourcify.dev/3338/0x9810eD5D5d8b3646575974296eC697d4CBbF56cF/" target="_blank">Sourcify</ContractLink></p>
+          <SubSectionHeader>DEX Contracts:</SubSectionHeader>
+          <p>🦄 UniswapV2Router02: <ContractLink href="https://repo.sourcify.dev/3338/0xBa6777062F71318de6b681370189055904e20D21" target="_blank">Sourcify</ContractLink></p>
+          <p>🍣 SushiSwapFactory: <ContractLink href={`https://repo.sourcify.dev/3338/${FACTORY_ADDRESS}`} target="_blank">Sourcify</ContractLink></p>
+          <SubSectionHeader>v3 Tokenomics Contracts:</SubSectionHeader>
+          <p>👑 DSFO NFT v3 (Soulbound): <ContractLink href={subscanLink(DSFO_NFT_ADDRESS)} target="_blank">Subscan</ContractLink></p>
+          <p>🎯 FeeManager v2 (Claims): <ContractLink href={subscanLink(FEE_MANAGER_ADDRESS)} target="_blank">Subscan</ContractLink></p>
+          <p>🏦 LP Vault: <ContractLink href={subscanLink(LP_VAULT_ADDRESS)} target="_blank">Subscan</ContractLink></p>
+          <p>🔀 Fee Splitter: <ContractLink href={subscanLink(FEE_SPLITTER_ADDRESS)} target="_blank">Subscan</ContractLink></p>
         </FeatureItem>
 
         <FeatureItem>

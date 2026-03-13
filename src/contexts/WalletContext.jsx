@@ -6,7 +6,7 @@ export const PEAQ_CHAIN = {
   name: 'PEAQ EVM',
   network: 'peaq',
   rpcUrls: {
-    default: { http: ['https://peaq.betterfuturelabs.xyz'] },
+    default: { http: ['https://quicknode1.peaq.xyz'] },
   },
   nativeCurrency: {
     name: 'PEAQ',

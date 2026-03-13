@@ -121,6 +121,23 @@ export const DropdownContent = styled.div`
   `}
 `;
 
+export const ExternalNavLink = styled.a`
+  color: #000000;
+  text-decoration: none;
+  font-weight: bold;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+
+  &:hover {
+    color: #0056b3;
+  }
+
+  svg {
+    flex-shrink: 0;
+  }
+`;
+
 export const ConnectButton = styled.button`
   padding: 10px 20px;
   border: none;

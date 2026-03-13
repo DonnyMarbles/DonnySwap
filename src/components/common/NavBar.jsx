@@ -14,6 +14,7 @@ import {
   DrawerPanel,
   DrawerHeader,
   DrawerContent,
+  ExternalNavLink,
 } from '../../styles/NavBarStyles';
 import CustomConnectButton from './CustomConnectButton';
 
@@ -115,6 +116,12 @@ const NavBar = () => {
           </DropdownContent>
         )}
       </DropdownContainer>
+      <ExternalNavLink href="/docs/introduction" target="_blank" rel="noopener noreferrer" onClick={handleNavigate}>
+        Docs
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M3.5 1H1.5C1.22386 1 1 1.22386 1 1.5V10.5C1 10.7761 1.22386 11 1.5 11H10.5C10.7761 11 11 10.7761 11 10.5V8.5M7 1H11V5M11 1L5.5 6.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      </ExternalNavLink>
     </NavLinks>
   );
 
