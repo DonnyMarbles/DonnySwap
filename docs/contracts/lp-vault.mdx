@@ -44,9 +44,9 @@ Three tiers based on vault health, each must sum to 10000:
 
 | Tier | Condition | Retain | DSFO Bonus | Treasury |
 |------|-----------|--------|------------|----------|
-| **Healthy** | Balance >= 80% of target | 6000 (60%) | 2500 (25%) | 1500 (15%) |
-| **Medium** | Balance 50-80% of target | 8000 (80%) | 1200 (12%) | 800 (8%) |
-| **Low** | Balance < 50% of target | 9500 (95%) | 300 (3%) | 200 (2%) |
+| **Healthy** | Balance ≥ 80% of target | 6000 (60%) | 2500 (25%) | 1500 (15%) |
+| **Medium** | Balance 50–80% of target | 8000 (80%) | 1200 (12%) | 800 (8%) |
+| **Low** | Balance under 50% of target | 9500 (95%) | 300 (3%) | 200 (2%) |
 
 ## Deposits
 
@@ -181,8 +181,8 @@ The DSFO bonus LP sent to FeeManager is broken down and distributed to holders d
 | `setFeeManager(address)` | Update FeeManager reference | Non-zero |
 | `setTreasury(address)` | Update treasury address | Non-zero |
 | `setRedemptionCooldown(uint256)` | Update cooldown period | — |
-| `setHarvestConfig(minInterval, bountyCap, bountyBps)` | Update harvest timing and bounty | `bountyBps <= 500` (5% max) |
-| `setHarvestTier(tier, retainBps, dsfoBonusBps, treasuryBps)` | Update allocation for tier 0/1/2 | Must sum to 10000, tier <= 2 |
+| `setHarvestConfig(minInterval, bountyCap, bountyBps)` | Update harvest timing and bounty | `bountyBps` ≤ 500 (5% max) |
+| `setHarvestTier(tier, retainBps, dsfoBonusBps, treasuryBps)` | Update allocation for tier 0/1/2 | Must sum to 10000, tier ≤ 2 |
 
 ## Events
 

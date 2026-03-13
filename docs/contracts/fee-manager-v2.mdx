@@ -213,7 +213,7 @@ Holders are stored in an array with O(1) removal using swap-and-pop. `holderInde
 | `setRouter(address)` | Update router reference | — |
 | `setFactory(address)` | Update factory reference | — |
 | `setTreasury(address)` | Update treasury address | Non-zero |
-| `setTriggerConfig(minInterval, bountyCap, bountyBps, minLPBalance)` | Update trigger parameters | bountyBps <= 500 (5% max) |
+| `setTriggerConfig(minInterval, bountyCap, bountyBps, minLPBalance)` | Update trigger parameters | `bountyBps` ≤ 500 (5% max) |
 | `syncHolder(address)` | Force-sync a holder's balance from DSFO token | — |
 | `syncHolders(address[])` | Batch sync multiple holders | — |
 | `emergencyWithdraw(token, amount, to)` | Withdraw stuck tokens | Blocked for active reward tokens |
