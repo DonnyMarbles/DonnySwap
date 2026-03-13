@@ -10,17 +10,86 @@ description: "Contract deployment order, wiring steps, and configuration for Don
 - Node.js 18+
 - Hardhat 2.28+ (`hardhat.config.cjs`)
 - Deployer private key in `.env` as `DEPLOYER_PRIVATE_KEY`
-- Sufficient PEAQ for gas
+- Sufficient PEAQ for gas (recommend 50+ PEAQ for full deployment + wiring)
 
 ## Deployment Order
 
 Contracts must be deployed in this order due to constructor dependencies:
 
+```mermaid
+flowchart TD
+    FM["1. FeeManagerV2<br/>Needs: Router, Factory, Treasury"]
+    LPV["2. LPVault<br/>Needs: LP Token, FeeManager, Treasury"]
+    DSFO["3. DSFONFTv3<br/>Needs: LP Token, FeeManager, LPVault"]
+    FS["4. FeeSplitter<br/>Needs: Factory, FeeManager, LPVault, Pair"]
+
+    FM --> LPV
+    FM --> DSFO
+    LPV --> DSFO
+    FM --> FS
+    LPV --> FS
+    DSFO --> Wire["5. Wiring Steps"]
+    FS --> Wire
+
+    style FM fill:#5bc0de,color:#000
+    style LPV fill:#f0ad4e,color:#000
+    style DSFO fill:#7C3AED,color:#fff
+    style FS fill:#5cb85c,color:#000
+    style Wire fill:#d9534f,color:#fff
 ```
-1. FeeManagerV2 (needs: DSFO address placeholder, Router, Factory, Treasury)
-2. LPVault (needs: MRBL-PEAQ LP, DSFO placeholder, FeeSplitter placeholder, FeeManager, Treasury)
-3. DSFONFTv3 (needs: LP token, FeeManager, LPVault, basePrice, priceStep)
-4. FeeSplitter (needs: Factory, FeeManager, LPVault, MRBL-PEAQ Pair)
+
+### Step 1: FeeManagerV2
+
+First because it has no dependencies on the other v3 contracts:
+
+```solidity
+constructor(
+    address _dsfoToken,   // Can be address(0) placeholder — set post-deploy
+    address _router,      // UniswapV2Router02
+    address _factory,     // SushiSwapFactory
+    address _treasury     // Treasury wallet
+)
+```
+
+### Step 2: LPVault
+
+Needs FeeManager address from step 1:
+
+```solidity
+constructor(
+    address _mrblPeaqLP,   // MRBL-PEAQ LP pair address
+    address _dsfoToken,    // address(0) placeholder — set post-deploy
+    address _feeSplitter,  // address(0) placeholder — set post-deploy
+    address _feeManager,   // From step 1
+    address _treasury      // Treasury wallet
+)
+```
+
+### Step 3: DSFONFTv3
+
+Needs both FeeManager and LPVault:
+
+```solidity
+constructor(
+    address _lpToken,      // MRBL-PEAQ LP pair address
+    address _feeManager,   // From step 1
+    address _lpVault,      // From step 2
+    uint256 _basePrice,    // Base mint price in LP wei
+    uint256 _priceStep     // Price increment per active NFT in LP wei
+)
+```
+
+### Step 4: FeeSplitter
+
+Needs FeeManager and LPVault:
+
+```solidity
+constructor(
+    address _factory,      // SushiSwapFactory
+    address _feeManager,   // From step 1
+    address _lpVault,      // From step 2
+    address _mrblPeaqPair  // MRBL-PEAQ pair address
+)
 ```
 
 ## Wiring Steps (Post-Deploy)
@@ -28,12 +97,14 @@ Contracts must be deployed in this order due to constructor dependencies:
 After all 4 contracts are deployed, wire them together:
 
 ```
-1. FeeManager.setDsfoToken(DSFONFTv3 address)
-2. LPVault.setDsfoToken(DSFONFTv3 address)
-3. LPVault.setFeeSplitter(FeeSplitter address)
-4. FeeManager.addLPTokenAddress(MRBL-PEAQ Pair address)
-5. Factory.setFeeTo(FeeSplitter address)   ← requires feeToSetter == deployer
+1. FeeManager.setDsfoToken(DSFONFTv3)          // So FeeManager accepts mint/burn callbacks
+2. LPVault.setDsfoToken(DSFONFTv3)             // So LPVault accepts deposit/redeem calls
+3. LPVault.setFeeSplitter(FeeSplitter)          // So LPVault knows who can deposit fees
+4. FeeManager.addLPTokenAddress(MRBL-PEAQ Pair) // Register LP for breakdown
+5. Factory.setFeeTo(FeeSplitter)                // Route protocol fees to FeeSplitter
 ```
+
+Step 5 requires the deployer to be the Factory's `feeToSetter`. This is a one-time privileged operation.
 
 ## Deploy Script
 
@@ -42,6 +113,22 @@ After all 4 contracts are deployed, wire them together:
 ```bash
 npx hardhat run scripts/deploy/deploy-v3.cjs --network peaq --config hardhat.config.cjs
 ```
+
+The script:
+1. Deploys all 4 contracts in order
+2. Executes all 5 wiring steps
+3. Logs deployed addresses
+4. Waits for confirmations between steps
+
+## Standalone Wiring Script
+
+If contracts are already deployed but not wired (e.g., after a partial deployment):
+
+```bash
+npx hardhat run scripts/deploy/wire-remaining.cjs --network peaq --config hardhat.config.cjs
+```
+
+Edit the contract addresses in the script before running.
 
 ## Factory.setFeeTo
 
@@ -52,12 +139,20 @@ const factory = new ethers.Contract(FACTORY_ADDRESS, factoryAbi, deployer);
 await factory.setFeeTo(FEE_SPLITTER_ADDRESS);
 ```
 
-A standalone wiring script is at `scripts/deploy/wire-remaining.cjs`.
+**Important**: If the deployer is not the `feeToSetter`, this step will revert. Check:
+
+```javascript
+const setter = await factory.feeToSetter();
+console.log('feeToSetter:', setter);
+```
 
 ## Hardhat Configuration
 
 ```javascript
 // hardhat.config.cjs
+require("@nomicfoundation/hardhat-toolbox");
+require("dotenv").config({ path: "./scripts/deploy/.env" });
+
 module.exports = {
   solidity: {
     version: "0.8.28",
@@ -78,44 +173,29 @@ module.exports = {
 
 ## Verification
 
-After deployment, verify contracts on Subscan or Sourcify for transparency.
+After deployment, verify contracts for transparency:
 
-## Constructor Parameters Reference
+### Subscan
 
-### FeeManagerV2
+PEAQ's Subscan explorer supports contract verification. Upload the flattened source and compiler settings.
 
-| Parameter | Description |
-|-----------|-------------|
-| `_dsfoToken` | DSFO NFT contract (can be placeholder, set post-deploy) |
-| `_router` | UniswapV2Router02 address |
-| `_factory` | SushiSwapFactory address |
-| `_treasury` | Treasury wallet address |
+### Sourcify
 
-### LPVault
+```bash
+npx hardhat verify --network peaq CONTRACT_ADDRESS "constructor_arg1" "constructor_arg2"
+```
 
-| Parameter | Description |
-|-----------|-------------|
-| `_mrblPeaqLP` | MRBL-PEAQ LP token pair address |
-| `_dsfoToken` | DSFO NFT contract (set post-deploy) |
-| `_feeSplitter` | FeeSplitter address (set post-deploy) |
-| `_feeManager` | FeeManagerV2 address |
-| `_treasury` | Treasury wallet address |
+Note: Sourcify support on PEAQ may require manual submission at [repo.sourcify.dev](https://repo.sourcify.dev).
 
-### DSFONFTv3
+## Post-Deployment Checklist
 
-| Parameter | Description |
-|-----------|-------------|
-| `_lpToken` | MRBL-PEAQ LP token pair address |
-| `_feeManager` | FeeManagerV2 address |
-| `_lpVault` | LPVault address |
-| `_basePrice` | Base mint price in LP wei |
-| `_priceStep` | Price increment per active NFT in LP wei |
-
-### FeeSplitter
-
-| Parameter | Description |
-|-----------|-------------|
-| `_factory` | SushiSwapFactory address |
-| `_feeManager` | FeeManagerV2 address |
-| `_lpVault` | LPVault address |
-| `_mrblPeaqPair` | MRBL-PEAQ pair address for split detection |
+- [ ] All 4 contracts deployed
+- [ ] FeeManager.dsfoToken set to DSFONFTv3
+- [ ] LPVault.dsfoToken set to DSFONFTv3
+- [ ] LPVault.feeSplitter set to FeeSplitter
+- [ ] MRBL-PEAQ LP registered in FeeManager
+- [ ] Factory.feeTo set to FeeSplitter
+- [ ] Contracts verified on Subscan/Sourcify
+- [ ] Addresses recorded in `deployed-addresses.mdx`
+- [ ] Frontend constants updated (`src/constants/contracts.js`)
+- [ ] ABIs updated (`src/ABIs/`)

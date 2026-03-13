@@ -5,11 +5,20 @@ description: "Soulbound fractional ownership NFT contract. ERC-721 + ERC-5192. L
 
 # DSFONFTv3
 
-**Address**: `0x441f5eB4608797D2E9E5F8130A1Bf7c742d3c50A`
+**Address**: [`0x441f5eB4608797D2E9E5F8130A1Bf7c742d3c50A`](https://peaq.subscan.io/account/0x441f5eB4608797D2E9E5F8130A1Bf7c742d3c50A?tab=contract)
 
 Soulbound (ERC-5192) fractional ownership NFTs. No transfers — only mint or redeem (burn). Price follows a linear bonding curve based on active supply.
 
 **Inherits**: ERC721URIStorage, Ownable, ReentrancyGuard, Pausable
+
+**Source**: `contracts/DSFO_mint_v3.sol`
+
+## Constants
+
+| Name | Value | Description |
+|------|-------|-------------|
+| `BPS` | 10000 | Basis points denominator |
+| ERC-5192 Interface ID | `0xb45a3c0e` | Reported via `supportsInterface` |
 
 ## State Variables
 
@@ -27,78 +36,144 @@ Soulbound (ERC-5192) fractional ownership NFTs. No transfers — only mint or re
 | `maxMintsPerAddress` | uint256 | Per-address cap (0 = unlimited, owner exempt) |
 | `mintCount` | mapping(address => uint256) | Mints per address |
 
-## Public Functions
-
-### `currentMintPrice() → uint256`
-
-Returns the current price to mint one NFT.
-
-```
-price = basePrice + (activeSupply * priceStep)
-```
-
-### `batchMintPrice(uint256 quantity) → uint256`
-
-Returns the total cost to mint `quantity` NFTs (sum of sequential prices).
+## Core Functions
 
 ### `mint(uint256 quantity)`
 
 Mint one or more soulbound DSFO NFTs.
 
+```solidity
+function mint(uint256 quantity) external nonReentrant whenNotPaused
+```
+
+**Parameters**:
+- `quantity` — Number of NFTs to mint (1-50)
+
 **Requirements**:
-- `quantity` must be 1-50
-- Caller must have approved sufficient LP tokens
-- Must not exceed per-address cap (if set)
+- `quantity > 0 && quantity <= 50`
+- Caller has approved sufficient LP tokens (`lpToken.allowance >= batchMintPrice(quantity)`)
+- Must not exceed `maxMintsPerAddress` (unless caller is owner)
 - Contract must not be paused
 
 **Effects**:
-1. Pulls `batchMintPrice(quantity)` LP from caller
-2. Sends 70% to `0xdead` (permanent burn)
-3. Sends 30% to LPVault, calls `depositFromMint()` per NFT
-4. Mints NFTs, emits `Locked` (ERC-5192) and `Mint` events
-5. Notifies FeeManager via `handleOwnershipChange(address(0), minter, quantity)`
+1. Pulls `batchMintPrice(quantity)` LP from caller via `transferFrom`
+2. Calculates `burnAmount = totalCost * burnBps / BPS` (70%)
+3. Sends burn amount to `0x000000000000000000000000000000000000dEaD`
+4. Remaining LP deposited to LPVault via `depositFromMint(tokenId, perNftVault)` for each NFT
+5. Last NFT in batch absorbs vault rounding dust
+6. Mints ERC-721 tokens with sequential IDs
+7. Emits `Locked(tokenId)` (ERC-5192) and `Mint(minter, tokenId, lpCost, lpBurned, lpToVault)` for each
+8. Notifies FeeManager: `handleOwnershipChange(address(0), msg.sender, quantity)`
+
+**Reverts**:
+- `"Quantity must be 1-50"` if quantity is 0 or >50
+- `"Exceeds per-address mint cap"` if limit exceeded (owner exempt)
+- ERC-20 `transferFrom` failure if insufficient allowance/balance
 
 ### `redeem(uint256 tokenId)`
 
 Burn a single DSFO NFT to redeem LP from the vault.
 
+```solidity
+function redeem(uint256 tokenId) external nonReentrant whenNotPaused
+```
+
+**Parameters**:
+- `tokenId` — Token ID to redeem
+
 **Requirements**:
-- Caller must own the token
+- Caller must own the token (`ownerOf(tokenId) == msg.sender`)
 - Contract must not be paused
 
 **Effects**:
-1. Burns the NFT (triggers FeeManager notification)
+1. Burns the NFT (triggers `_update` which notifies FeeManager)
 2. Decrements `activeSupply`
-3. Calls `LPVault.processRedemption(tokenId, holder)` which transfers LP to holder
+3. Calls `LPVault.processRedemption(tokenId, msg.sender)` which transfers LP to holder
+4. Emits `Redeem(holder, tokenId, lpReturned)`
 
-### `redeemBatch(uint256[] tokenIds)`
+**Reverts**:
+- `"Not token owner"` if caller doesn't own the token
+
+### `redeemBatch(uint256[] calldata tokenIds)`
 
 Burn up to 50 NFTs in one transaction.
 
-### `locked(uint256 tokenId) → bool`
+```solidity
+function redeemBatch(uint256[] calldata tokenIds) external nonReentrant whenNotPaused
+```
 
-ERC-5192: Returns `true` for all existing tokens (all are permanently locked).
+**Parameters**:
+- `tokenIds` — Array of token IDs to redeem (length 1-50)
+
+**Reverts**:
+- `"Empty array"` if length is 0
+- `"Too many"` if length > 50
+- `"Not token owner"` if caller doesn't own any token in the array
 
 ## View Functions
+
+### `currentMintPrice() -> uint256`
+
+Returns the current price to mint one NFT.
+
+```solidity
+function currentMintPrice() public view returns (uint256)
+// Returns: basePrice + (activeSupply * priceStep)
+```
+
+### `batchMintPrice(uint256 quantity) -> uint256`
+
+Returns total cost to mint `quantity` NFTs (sum of sequential prices).
+
+```solidity
+function batchMintPrice(uint256 quantity) public view returns (uint256)
+```
+
+### Other View Functions
 
 | Function | Returns | Description |
 |----------|---------|-------------|
 | `totalActiveSupply()` | uint256 | Same as `activeSupply` |
 | `totalMinted()` | uint256 | Same as `nextTokenId` — total ever minted |
 | `baseTokenURI()` | string | Current base URI for token metadata |
-| `supportsInterface(bytes4)` | bool | ERC-165 — includes ERC-5192 (0xb45a3c0e) |
+| `locked(uint256 tokenId)` | bool | ERC-5192 — returns `true` for all existing tokens |
+| `supportsInterface(bytes4)` | bool | ERC-165 — includes ERC-5192 (`0xb45a3c0e`) |
+
+## Soulbound Transfer Blocking
+
+The `_update()` override blocks all transfers between non-zero addresses:
+
+```solidity
+function _update(address to, uint256 tokenId, address auth)
+    internal override(ERC721) returns (address)
+{
+    address from = _ownerOf(tokenId);
+    if (from != address(0) && to != address(0)) {
+        revert("DSFO: soulbound, transfers disabled");
+    }
+    // Mint (from == 0) and burn (to == 0) proceed normally
+    address previousOwner = super._update(to, tokenId, auth);
+    // Notify FeeManager on burn
+    if (to == address(0) && from != address(0)) {
+        feeManager.handleOwnershipChange(from, address(0), 1);
+    }
+    return previousOwner;
+}
+```
+
+Any attempt to call `transferFrom`, `safeTransferFrom`, or `approve` for transfer purposes will revert.
 
 ## Admin Functions (onlyOwner)
 
-| Function | Description |
-|----------|-------------|
-| `setPricing(uint256 basePrice, uint256 priceStep)` | Update pricing parameters |
-| `setBurnVaultSplit(uint256 burnBps, uint256 vaultBps)` | Update LP split (must sum to 10000) |
-| `setFeeManager(address)` | Update FeeManager reference |
-| `setLPVault(address)` | Update LPVault reference |
-| `setMaxMintsPerAddress(uint256)` | Set per-address mint cap (0 = unlimited) |
-| `setBaseTokenURI(string)` | Set base URI for NFT metadata |
-| `pause()` / `unpause()` | Pause/unpause minting and redemption |
+| Function | Description | Constraints |
+|----------|-------------|-------------|
+| `setPricing(uint256 _basePrice, uint256 _priceStep)` | Update bonding curve parameters | `_basePrice > 0` |
+| `setBurnVaultSplit(uint256 _burnBps, uint256 _vaultBps)` | Update LP split ratios | Must sum to 10000 |
+| `setFeeManager(address)` | Update FeeManager reference | — |
+| `setLPVault(address)` | Update LPVault reference | Non-zero address |
+| `setMaxMintsPerAddress(uint256)` | Set per-address mint cap | 0 = unlimited |
+| `setBaseTokenURI(string)` | Set base URI for NFT metadata | — |
+| `pause()` / `unpause()` | Pause/unpause minting and redemption | — |
 
 ## Events
 

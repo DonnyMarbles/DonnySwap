@@ -5,69 +5,138 @@ description: "Mechanism design preventing extraction attacks, mint-and-flip, vau
 
 # Anti-Gaming Mechanisms
 
-The tokenomics system is designed to make all extraction strategies net-negative.
+The tokenomics system is designed to make all extraction strategies net-negative. Every mechanism reinforces the others — there is no single point of exploitation.
 
 ## Mechanism Table
 
-| Mechanism | Protects Against |
-|-----------|-----------------|
-| Soulbound NFTs (ERC-5192) | Claim sniping, secondary market speculation |
-| Smooth time-weighted redemption (0→80% over 365d) | Mint-and-flip, impulsive redemption |
-| Smooth sliding redemption fee (20%→3% over time) | Short-term extraction, cliff gaming |
-| 20% vault reserve (baked into pro-rata formula) | Bank-run vault drainage, race conditions |
-| 48-hour redemption cooldown per address | Bot-driven vault drainage |
-| 70% LP burn on mint | Makes ALL gaming cycles net-negative |
-| `activeSupply`-based pricing | Natural market-driven supply equilibrium |
-| Adaptive vault reinvestment ratio | Vault depletion death spiral |
-| Rolling vault target (not ATH) | Whale-inflated target manipulation |
-| Capped caller bounty on permissionless triggers | MEV bounty gaming |
-| Minimum LP balance threshold for trigger | Dust griefing on permissionless calls |
-| LP auto-registration via Factory validation | Operational bottleneck bypass |
+| # | Mechanism | Protects Against | How |
+|---|-----------|-----------------|-----|
+| 1 | Soulbound NFTs (ERC-5192) | Claim sniping, secondary market speculation | `_update()` reverts all transfers. Only mint and burn allowed. |
+| 2 | Smooth time-weighted redemption (0->80% over 365d) | Mint-and-flip, impulsive redemption | Linear vesting, not cliff. No way to game a threshold. |
+| 3 | Smooth sliding redemption fee (20%->3%) | Short-term extraction, cliff gaming | Continuous decay, not stepped. No advantageous exit window. |
+| 4 | 20% vault reserve (baked into pro-rata) | Bank-run vault drainage, race conditions | Deterministic `*0.8` multiplier. Cannot be drained even if all redeem simultaneously. |
+| 5 | 48-hour redemption cooldown per address | Bot-driven vault drainage | `lastRedemptionTime` enforced on-chain. |
+| 6 | 70% LP burn on mint | Makes ALL gaming cycles net-negative | Irrecoverable cost. You can never get back more than 30% of your mint cost. |
+| 7 | `activeSupply`-based pricing | Natural market-driven supply equilibrium | Price drops when holders leave, rises when they join. |
+| 8 | Adaptive vault reinvestment ratio | Vault depletion death spiral | Harvest retains 95% when vault is stressed. |
+| 9 | Rolling vault target (not ATH) | Whale-inflated target manipulation | Target = 30% of `totalActiveMintCost`, adjusts on every mint/redeem. |
+| 10 | Capped caller bounty on triggers | MEV bounty gaming | Hard cap + max 5% bps limit on bounty. |
+| 11 | Minimum LP balance threshold for trigger | Dust griefing on permissionless calls | Configurable floor prevents processing worthless amounts. |
+| 12 | LP auto-registration via Factory validation | Operational bottleneck bypass | Anyone can register a legitimate pair — no owner dependency. |
 
-## Why Redeem-to-Cheapen-Then-Remint Fails
+## Attack Analysis
 
-The most obvious attack: redeem NFTs to lower `activeSupply` (making new mints cheaper), then mint at the lower price.
+### Attack 1: Redeem-to-Cheapen-Then-Remint
 
-This fails because:
+**Strategy**: Redeem NFTs to lower `activeSupply` (cheaper mints), then re-mint at the lower price.
 
-1. **70% of original LP is permanently burned** — you only deposited 30% to vault
-2. **Time weight resets to 0%** on the new mint — must wait another year for full value
-3. **Up to 20% redemption fee** on early exit
-4. **Net loss every cycle** — each round destroys 70%+ of the LP involved
+**Why it fails**:
 
-## Vault Reserve Design
+```
+Round 1: Mint 10 NFTs at total cost 10 LP
+  -> 7 LP burned forever (70%)
+  -> 3 LP to vault (30%)
 
-The 20% reserve isn't a threshold that can be drained — it's baked into the pro-rata formula:
+Round 2: Redeem all 10 after 365 days
+  -> Best case: recover ~2.91 LP (29.1% of cost)
+  -> Net loss so far: 7.09 LP
+
+Round 3: Remint at lower price (activeSupply = 0)
+  -> Must spend another ~10 LP at base price
+  -> Another 7 LP burned immediately
+```
+
+**Result**: Each cycle destroys ~70% of the LP involved. After two rounds, you've spent ~20 LP and burned ~14 LP permanently. The price discount from lowering `activeSupply` cannot compensate for the 70% burn.
+
+### Attack 2: Claim Sniping (Just-in-Time Minting)
+
+**Strategy**: Mint right before a fee distribution, claim, then redeem.
+
+**Why it fails**:
+
+1. **Soulbound** — Can't buy an existing NFT from someone else
+2. **Mint cost** — Must pay the full bonding curve price in LP tokens
+3. **70% burned** — Immediate 70% loss on mint
+4. **Time weight 0%** — Cannot redeem anything on day 0
+5. **20% fee** — Even if you could redeem, you'd pay the maximum exit fee
+6. **Fee share** — Your share of one distribution cycle is a tiny fraction of mint cost
+
+**Math**: If triggering distributes $100 across 50 holders, each share is $2. Your mint cost for 1 NFT might be $50+. You'd need 25+ distribution cycles just to break even on the 30% that went to vault, ignoring the 70% burn entirely.
+
+### Attack 3: Vault Drainage (Bank Run)
+
+**Strategy**: Coordinate mass redemptions to drain the vault before others can exit.
+
+**Why it fails**:
+
+The 20% reserve is **not a threshold** — it's built into the formula:
 
 ```
 vaultProRata = (vaultBalance * 0.8 * mintCostLP) / totalActiveMintCost
 ```
 
-Even if every holder redeems simultaneously, the math ensures 20% remains. This is deterministic regardless of redemption ordering.
+Simulation with 10 holders, each minted for 1 LP, vault has 3 LP:
 
-## Adaptive Harvest
+| Redeemer | Vault Before | Pro-Rata | Fee (3%) | Net | Vault After |
+|----------|-------------|----------|----------|-----|-------------|
+| #1 | 3.00 | 0.240 | 0.007 | 0.233 | 2.764 |
+| #2 | 2.764 | 0.222 | 0.007 | 0.216 | 2.545 |
+| #3 | 2.545 | 0.204 | 0.006 | 0.198 | 2.341 |
+| ... | ... | ... | ... | ... | ... |
+| #10 | 0.885 | 0.071 | 0.002 | 0.069 | 0.814 |
 
-The LPVault's harvest system adjusts allocation based on vault health:
+After all 10 redeem: **0.814 LP remains** in the vault. The 20% reserve held. No one got an unfair advantage — each redeemer got proportionally less as the vault shrank.
 
-| Vault Health | Retain | DSFO Bonus | Treasury |
-|-------------|--------|------------|----------|
-| Above 80% of target | 60% | 25% | 15% |
-| 50-80% of target | 80% | 12% | 8% |
-| Below 50% of target | 95% | 3% | 2% |
+### Attack 4: MEV on Trigger Bounty
 
-When the vault is stressed, it retains more LP to protect redemptions. When healthy, it distributes more surplus to holders.
+**Strategy**: Front-run the fee listener to steal the trigger bounty.
+
+**Why it's limited**:
+
+- Bounty is capped at `triggerBountyCap` (absolute maximum)
+- Bounty is max 5% of output (configurable, default 1%)
+- Anyone can trigger — this is a feature, not a bug. MEV searchers triggering early is fine because the protocol wants timely distributions.
+- No advantage from ordering — the accumulator distributes the same regardless of trigger timing.
+
+### Attack 5: Whale Manipulation of Vault Target
+
+**Strategy**: Mint many NFTs to inflate `totalActiveMintCost`, making the vault appear underfunded, preventing harvest distributions.
+
+**Why it fails**:
+
+- The vault target is `30% of totalActiveMintCost`
+- When a whale mints, 30% of their LP goes to the vault, exactly matching the target increase
+- The vault's health ratio stays roughly constant
+- And the whale has burned 70% of their LP permanently
 
 ## Soulbound Enforcement
 
 The `_update()` override in DSFONFTv3 blocks all transfers:
 
 ```solidity
-if (from != address(0) && to != address(0)) {
-    revert("DSFO: soulbound, transfers disabled");
+function _update(address to, uint256 tokenId, address auth)
+    internal override(ERC721) returns (address)
+{
+    address from = _ownerOf(tokenId);
+    if (from != address(0) && to != address(0)) {
+        revert("DSFO: soulbound, transfers disabled");
+    }
+    // ... mint/burn allowed
 }
 ```
 
 Only mint (from=0) and burn (to=0) are allowed. This prevents:
+
 - Buying NFTs just before a fee distribution
 - Selling NFTs to avoid redemption penalties
 - Secondary market speculation disconnected from protocol participation
+- Flash-loan-funded claim extraction
+
+## Why Smooth Curves Beat Cliff Vesting
+
+Both the time weight (0->80%) and the sliding fee (20->3%) use **smooth linear curves** instead of cliff schedules. This is intentional:
+
+- **No gaming threshold** — There's no magic day where everything unlocks
+- **No cliff arbitrage** — Can't time entries/exits around discrete steps
+- **Proportional commitment** — Holding 6 months gets exactly half the benefit of 12 months
+- **Natural exits** — Holders leave gradually when it makes economic sense, not in coordinated cliffs

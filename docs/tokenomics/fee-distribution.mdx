@@ -16,7 +16,7 @@ flowchart TD
     FS["FeeSplitter"]
     FM["FeeManager v2"]
     LPV["LPVault"]
-    Router["Router.removeLiquidity()<br/>LP → MRBL + WPEAQ"]
+    Router["Router.removeLiquidity()<br/>LP -> MRBL + WPEAQ"]
     Acc["accRewardPerShare +=<br/>amount * 1e36 / totalShares"]
     Claim["Holder calls claimAllFees()<br/>Receives MRBL + WPEAQ"]
     Bounty["1% Caller Bounty"]
@@ -38,13 +38,34 @@ flowchart TD
     style Claim fill:#7C3AED,color:#fff
 ```
 
-### Step 1: Protocol Fee Generation
+## How Fees Are Generated
 
-Every swap on any DonnySwap pair generates a 0.3% fee. Of that, approximately 0.05% is minted as LP tokens and sent to `Factory.feeTo` — which is the **FeeSplitter** contract.
+Every swap on any DonnySwap pair generates a 0.3% fee. The Uniswap V2 protocol reserves 1/6 of that (approximately 0.05%) as protocol revenue.
 
-This is mandatory and ubypassable. The V2 Pair contract's `_mintFee()` sends LP to the `feeTo` address regardless of which router or frontend the trader uses.
+This works through the Pair contract's `_mintFee()` function, which mints new LP tokens proportional to the accumulated fees and sends them to `Factory.feeTo` — the **FeeSplitter** contract.
 
-### Step 2: FeeSplitter Routing
+This is **mandatory and ubypassable**. The fee accrues regardless of which router, aggregator, or frontend is used. Direct contract interaction, third-party aggregators, and MEV bots all pay the same protocol fee.
+
+### Fee Math Example
+
+A $10,000 swap on the MRBL-PEAQ pair:
+
+```
+Swap fee:     $10,000 * 0.3%  = $30 (to LPs)
+Protocol fee: $30 * 1/6       = $5  (minted as LP to FeeSplitter)
+
+FeeSplitter routes (MRBL-PEAQ):
+  FeeManager: $5 * 70% = $3.50
+  LPVault:    $5 * 30% = $1.50
+```
+
+Over 1,000 such swaps per month:
+```
+FeeManager total:  $3,500/month in LP (broken into MRBL + WPEAQ)
+LPVault growth:    $1,500/month in LP
+```
+
+## FeeSplitter Routing
 
 The FeeSplitter examines each LP token it holds and routes it:
 
@@ -53,58 +74,154 @@ The FeeSplitter examines each LP token it holds and routes it:
 | MRBL-PEAQ LP | 70% | 30% |
 | All other LP | 100% | 0% |
 
-The 30% MRBL-PEAQ LP going to LPVault strengthens the redemption backstop and generates harvest surplus.
+The 30% MRBL-PEAQ LP going to LPVault strengthens the redemption backstop and generates harvest surplus. Other pair LP goes entirely to FeeManager since the vault only holds MRBL-PEAQ LP.
 
-### Step 3: FeeManager Breakdown
+## The Accumulator Model
+
+FeeManager uses a per-share accumulator (same pattern as SushiSwap's MasterChef) to distribute fees efficiently. Instead of looping through every holder on each distribution, it tracks a single global counter.
+
+### How It Works
+
+Three key values per reward token:
+
+```
+accRewardPerShare[token]           — Global: total reward per NFT ever (scaled by 1e36)
+rewardDebt[holder][token]          — Per-holder: reward "already accounted for" at last update
+pendingRewards[holder][token]      — Per-holder: settled but unclaimed rewards
+```
+
+**On each trigger** (LP breakdown):
+```solidity
+accRewardPerShare[token] += (tokenAmount * 1e36) / totalTrackedShares;
+```
+
+**On claim** or balance change, the holder's new rewards are:
+```
+newlyAccrued = (holderBalance * accRewardPerShare[token] / 1e36) - rewardDebt[holder][token]
+```
+
+### Worked Example
+
+Setup: 3 holders, 10 total NFTs.
+
+| Holder | NFTs | Share |
+|--------|------|-------|
+| Alice | 5 | 50% |
+| Bob | 3 | 30% |
+| Carol | 2 | 20% |
+
+**Trigger 1**: 100 WPEAQ distributed
+
+```
+accRewardPerShare[WPEAQ] += (100 * 1e36) / 10 = 10e36
+
+Alice claimable: (5 * 10e36) / 1e36 = 50 WPEAQ
+Bob claimable:   (3 * 10e36) / 1e36 = 30 WPEAQ
+Carol claimable: (2 * 10e36) / 1e36 = 20 WPEAQ
+```
+
+**Alice claims 50 WPEAQ** — her `rewardDebt` is set to `5 * 10e36 / 1e36 = 50`
+
+**Trigger 2**: 200 WPEAQ distributed
+
+```
+accRewardPerShare[WPEAQ] += (200 * 1e36) / 10 = 20e36
+Total accRewardPerShare = 30e36
+
+Alice claimable: (5 * 30e36) / 1e36 - 50 (debt) = 150 - 50 = 100 WPEAQ
+Bob claimable:   (3 * 30e36) / 1e36 - 0  (debt) = 90 WPEAQ (30 from T1 + 60 from T2)
+Carol claimable: (2 * 30e36) / 1e36 - 0  (debt) = 60 WPEAQ (20 from T1 + 40 from T2)
+```
+
+The accumulator ensures each NFT earns the same amount per trigger regardless of when it was minted.
+
+### Why 1e36 Precision?
+
+With small fee amounts and many holders, integer division truncation can lose significant value. Scaling by 1e36 ensures sub-wei accuracy in the accumulator, only rounding at final claim.
+
+## Trigger Process
 
 When `triggerBreakdownAndDistribution()` is called:
 
-1. For each registered LP token held by FeeManager
-2. Calls `Router.removeLiquidity()` to break LP into underlying tokens (e.g., MRBL + WPEAQ)
-3. Deducts caller bounty (default 1%, capped)
-4. Accumulates remaining tokens into `accRewardPerShare` (scaled by 1e36)
+1. **Time check** — Must be at least `triggerMinInterval` (4 hours) since last trigger
+2. **Zero-holder fallback** — If no DSFO holders exist, all LP is sent to treasury
+3. **LP breakdown** — For each registered LP token held by FeeManager:
+   - Calls `Router.removeLiquidity()` to split LP into underlying tokens (e.g., MRBL + WPEAQ)
+   - Optional slippage protection via `minAmounts0[]` and `minAmounts1[]` arrays
+4. **Bounty deduction** — Caller receives 1% (default) of each output token, capped at `triggerBountyCap`
+5. **Accumulation** — Remaining tokens added to `accRewardPerShare` for each reward token
+
+### Slippage Protection
+
+The trigger accepts optional min-amount arrays for protection against sandwich attacks:
 
 ```solidity
-accRewardPerShare[token] += (amount * PRECISION) / totalTrackedShares;
+function triggerBreakdownAndDistribution(
+    uint256[] calldata minAmounts0,
+    uint256[] calldata minAmounts1
+) external nonReentrant
 ```
 
-### Step 4: Claiming
+The [fee listener](/docs/operations/fee-listener) computes these from on-chain reserves with 2% tolerance. If reserve reads fail, it falls back to the unprotected overload.
 
-DSFO holders call `claimAllFees()` or `claimFees(address[] tokens)` to withdraw accumulated rewards.
+## Claiming
 
-Claimable amount per holder per token:
+### `claimAllFees()`
 
-```
-claimable = (holderBalance * accRewardPerShare[token]) / PRECISION - rewardDebt[holder][token] + pendingRewards[holder][token]
-```
+Claims all pending fees across all reward tokens in one transaction. Most gas-efficient for regular claiming.
+
+### `claimFees(address[] tokens)`
+
+Claims only specific tokens. Useful if you want to claim WPEAQ but hold MRBL.
+
+### What Happens on Claim
+
+1. **Settle** — Calculate newly accrued rewards since last update
+2. **Transfer** — Send all pending tokens to caller
+3. **Update debt** — Reset `rewardDebt` so future claims only cover new fees
+
+Claims never fail due to other holders' actions. Your accumulated fees are yours regardless of what others do.
 
 ## Two Revenue Streams for DSFO Holders
 
 ### Stream 1: Direct Fee Claims (FeeManager)
 
-- Source: Protocol fees from all trading pairs
-- Mechanism: `accRewardPerShare` accumulation
-- Claim: `claimAllFees()` on FeeManager
-- Frequency: Anytime (accumulates between claims)
+- **Source**: Protocol fees from all trading pairs
+- **Mechanism**: `accRewardPerShare` accumulation
+- **Tokens received**: MRBL, WPEAQ, and any other underlying tokens from registered pairs
+- **Frequency**: Claim anytime (accumulates between claims)
 
-### Stream 2: Vault Harvest Bonus (LPVault → FeeManager)
+### Stream 2: Vault Harvest Bonus (LPVault -> FeeManager)
 
-- Source: LPVault surplus above target
-- Mechanism: `harvest()` sends DSFO bonus LP to FeeManager
-- The LP is then broken down in the next trigger cycle
-- This is additional income on top of direct trading fees
+- **Source**: LPVault surplus above its 30% target
+- **Mechanism**: `harvest()` sends DSFO bonus LP to FeeManager
+- **How it flows**: LP sent to FeeManager is broken down in the next trigger cycle and distributed like regular fees
+- **Frequency**: Weekly (when vault is healthy)
+- **Scale**: Up to 25% of vault surplus goes to DSFO holders
+
+This means even the 30% LP that goes to the vault generates additional income for holders through harvest cycles.
 
 ## Trigger Configuration
 
-The trigger is permissionless — anyone can call it:
+The trigger is permissionless — anyone can call it and earn the bounty:
 
-| Parameter | Default | Description |
-|-----------|---------|-------------|
-| `triggerMinInterval` | 4 hours | Minimum time between triggers |
-| `triggerBountyBps` | 100 (1%) | Caller incentive as % of output |
-| `triggerBountyCap` | Set by governance | Max absolute bounty per token |
-| `triggerMinLPBalance` | 0 | Minimum LP to prevent dust griefing |
+| Parameter | Default | Description | Max |
+|-----------|---------|-------------|-----|
+| `triggerMinInterval` | 4 hours | Minimum time between triggers | — |
+| `triggerBountyBps` | 100 (1%) | Caller incentive as % of output | 500 (5%) |
+| `triggerBountyCap` | Set by owner | Max absolute bounty per token | — |
+| `triggerMinLPBalance` | 0 | Minimum LP to prevent dust griefing | — |
 
 ## Treasury Fallback
 
-When `totalTrackedShares == 0` (no DSFO holders), triggering sends all LP to the treasury address instead of reverting. This prevents fees from getting stuck.
+When `totalTrackedShares == 0` (no DSFO holders), triggering sends all LP to the treasury address instead of reverting. This prevents fees from getting stuck during bootstrap or if all holders redeem.
+
+## Gas Costs
+
+| Operation | Approximate Gas |
+|-----------|----------------|
+| `claimAllFees()` (2 reward tokens) | ~80,000 |
+| `triggerBreakdownAndDistribution()` (1 LP) | ~250,000 |
+| `triggerBreakdownAndDistribution()` (3 LPs) | ~500,000 |
+
+Gas costs scale linearly with the number of registered LP tokens and reward tokens, NOT with the number of holders. This is the key advantage of the accumulator model.
