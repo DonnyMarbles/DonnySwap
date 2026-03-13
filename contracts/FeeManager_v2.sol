@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity ^0.8.24;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol";
 import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol";
 import "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 
@@ -22,10 +23,20 @@ contract FeeManagerV2 is Ownable, ReentrancyGuard {
 
     // ── Constants ──
     uint256 private constant PRECISION = 1e36;
+    uint256 private constant MAX_REWARD_TOKENS = 50;
 
     // ── Immutable-ish refs ──
     IDSFO public dsfoToken;
     IUniswapV2Router02 public router;
+    IUniswapV2Factory public factory;
+    address public treasury;
+
+    // ── Trigger config (permissionless) ──
+    uint256 public triggerMinInterval = 4 hours;
+    uint256 public lastTriggerTime;
+    uint256 public triggerBountyBps = 100;  // 1%
+    uint256 public triggerBountyCap;        // Max bounty in underlying token units (set by governance)
+    uint256 public triggerMinLPBalance = 0; // Minimum LP balance to prevent dust griefing
 
     // ── Holder tracking (same swap-and-pop pattern as v1) ──
     address[] private holderList;
@@ -77,11 +88,15 @@ contract FeeManagerV2 is Ownable, ReentrancyGuard {
     );
     event LPTokenAdded(address indexed lpToken);
     event LPTokenRemoved(address indexed lpToken);
+    event TriggerConfigUpdated(uint256 minInterval, uint256 bountyCap, uint256 bountyBps, uint256 minLPBalance);
+    event TreasuryFallback(address indexed lpToken, uint256 lpBalance);
 
     // ── Constructor ──
-    constructor(address _dsfoToken, address _router) Ownable(msg.sender) {
+    constructor(address _dsfoToken, address _router, address _factory, address _treasury) Ownable(msg.sender) {
         dsfoToken = IDSFO(_dsfoToken);
         router = IUniswapV2Router02(_router);
+        factory = IUniswapV2Factory(_factory);
+        treasury = _treasury;
     }
 
     // ── Modifiers ──
@@ -97,6 +112,25 @@ contract FeeManagerV2 is Ownable, ReentrancyGuard {
     function addLPTokenAddress(address lpToken) external onlyOwner {
         require(lpToken != address(0), "Invalid LP address");
         require(!isRegisteredLP[lpToken], "LP already registered");
+        lpTokenAddresses.push(lpToken);
+        isRegisteredLP[lpToken] = true;
+        emit LPTokenAdded(lpToken);
+    }
+
+    /// @notice Permissionless LP registration — validates address is a V2 pair from Factory.
+    function registerLP(address lpToken) external {
+        require(lpToken != address(0), "Invalid LP address");
+        require(!isRegisteredLP[lpToken], "LP already registered");
+
+        // Validate it's a real V2 pair from our factory
+        IUniswapV2Pair pair = IUniswapV2Pair(lpToken);
+        address token0 = pair.token0();
+        address token1 = pair.token1();
+        require(
+            factory.getPair(token0, token1) == lpToken,
+            "Not a valid Factory pair"
+        );
+
         lpTokenAddresses.push(lpToken);
         isRegisteredLP[lpToken] = true;
         emit LPTokenAdded(lpToken);
@@ -173,36 +207,132 @@ contract FeeManagerV2 is Ownable, ReentrancyGuard {
     //  FEE BREAKDOWN & ACCUMULATION
     // ═══════════════════════════════════════════════════════════════════
 
-    /// @notice Owner triggers LP breakdown. Underlying tokens are accumulated
-    ///         into rewardPerShare — no per-holder transfers happen here.
-    function triggerBreakdownAndDistribution() external onlyOwner nonReentrant {
-        require(totalTrackedShares > 0, "No shares tracked");
+    /// @notice Permissionless LP breakdown trigger with caller bounty.
+    ///         When totalTrackedShares == 0, LP is sent to treasury (fallback).
+    /// @param minAmounts0 Minimum amounts for token0 per LP (slippage protection).
+    ///                    Array must match lpTokenAddresses length, or be empty for no protection.
+    /// @param minAmounts1 Minimum amounts for token1 per LP (slippage protection).
+    function triggerBreakdownAndDistribution(
+        uint256[] calldata minAmounts0,
+        uint256[] calldata minAmounts1
+    ) external nonReentrant {
+        require(
+            block.timestamp >= lastTriggerTime + triggerMinInterval,
+            "Too soon"
+        );
+
+        bool hasSlippage = minAmounts0.length > 0;
+        if (hasSlippage) {
+            require(
+                minAmounts0.length == lpTokenAddresses.length &&
+                minAmounts1.length == lpTokenAddresses.length,
+                "Min amounts length mismatch"
+            );
+        }
+
+        lastTriggerTime = block.timestamp;
+
+        // Treasury fallback when no holders
+        if (totalTrackedShares == 0) {
+            require(treasury != address(0), "No treasury set");
+            for (uint256 i = 0; i < lpTokenAddresses.length; i++) {
+                address lpAddr = lpTokenAddresses[i];
+                uint256 lpBalance = IERC20(lpAddr).balanceOf(address(this));
+                if (lpBalance == 0) continue;
+                if (lpBalance < triggerMinLPBalance) continue;
+                IERC20(lpAddr).safeTransfer(treasury, lpBalance);
+                emit TreasuryFallback(lpAddr, lpBalance);
+            }
+            return;
+        }
 
         for (uint256 i = 0; i < lpTokenAddresses.length; i++) {
             address lpAddr = lpTokenAddresses[i];
             uint256 lpBalance = IERC20(lpAddr).balanceOf(address(this));
             if (lpBalance == 0) continue;
+            if (lpBalance < triggerMinLPBalance) continue;
 
             IUniswapV2Pair pair = IUniswapV2Pair(lpAddr);
             address token0 = pair.token0();
             address token1 = pair.token1();
 
-            // Approve router (single call — forceApprove handles non-standard tokens)
+            uint256 min0 = hasSlippage ? minAmounts0[i] : 0;
+            uint256 min1 = hasSlippage ? minAmounts1[i] : 0;
+
             IERC20(lpAddr).forceApprove(address(router), lpBalance);
 
             (uint256 amount0, uint256 amount1) = router.removeLiquidity(
                 token0,
                 token1,
                 lpBalance,
-                0, // TODO: pass min amounts via parameter for slippage protection
-                0,
+                min0,
+                min1,
                 address(this),
                 block.timestamp
             );
 
+            // Caller bounty (paid from each underlying token)
+            uint256 bounty0 = _calculateBounty(amount0);
+            uint256 bounty1 = _calculateBounty(amount1);
+
+            if (bounty0 > 0) {
+                IERC20(token0).safeTransfer(msg.sender, bounty0);
+                amount0 -= bounty0;
+            }
+            if (bounty1 > 0) {
+                IERC20(token1).safeTransfer(msg.sender, bounty1);
+                amount1 -= bounty1;
+            }
+
             _accumulateReward(token0, amount0);
             _accumulateReward(token1, amount1);
 
+            emit LPBrokenDown(lpAddr, token0, token1, amount0, amount1);
+        }
+    }
+
+    /// @notice Backwards-compatible overload without slippage params (no protection).
+    function triggerBreakdownAndDistribution() external nonReentrant {
+        require(
+            block.timestamp >= lastTriggerTime + triggerMinInterval,
+            "Too soon"
+        );
+        lastTriggerTime = block.timestamp;
+
+        if (totalTrackedShares == 0) {
+            require(treasury != address(0), "No treasury set");
+            for (uint256 i = 0; i < lpTokenAddresses.length; i++) {
+                address lpAddr = lpTokenAddresses[i];
+                uint256 lpBalance = IERC20(lpAddr).balanceOf(address(this));
+                if (lpBalance == 0 || lpBalance < triggerMinLPBalance) continue;
+                IERC20(lpAddr).safeTransfer(treasury, lpBalance);
+                emit TreasuryFallback(lpAddr, lpBalance);
+            }
+            return;
+        }
+
+        for (uint256 i = 0; i < lpTokenAddresses.length; i++) {
+            address lpAddr = lpTokenAddresses[i];
+            uint256 lpBalance = IERC20(lpAddr).balanceOf(address(this));
+            if (lpBalance == 0 || lpBalance < triggerMinLPBalance) continue;
+
+            IUniswapV2Pair pair = IUniswapV2Pair(lpAddr);
+            address token0 = pair.token0();
+            address token1 = pair.token1();
+
+            IERC20(lpAddr).forceApprove(address(router), lpBalance);
+
+            (uint256 amount0, uint256 amount1) = router.removeLiquidity(
+                token0, token1, lpBalance, 0, 0, address(this), block.timestamp
+            );
+
+            uint256 bounty0 = _calculateBounty(amount0);
+            uint256 bounty1 = _calculateBounty(amount1);
+            if (bounty0 > 0) { IERC20(token0).safeTransfer(msg.sender, bounty0); amount0 -= bounty0; }
+            if (bounty1 > 0) { IERC20(token1).safeTransfer(msg.sender, bounty1); amount1 -= bounty1; }
+
+            _accumulateReward(token0, amount0);
+            _accumulateReward(token1, amount1);
             emit LPBrokenDown(lpAddr, token0, token1, amount0, amount1);
         }
     }
@@ -294,10 +424,48 @@ contract FeeManagerV2 is Ownable, ReentrancyGuard {
         router = IUniswapV2Router02(_router);
     }
 
-    /// @notice Emergency withdraw a stuck token. Cannot withdraw reward tokens
-    ///         that have pending distributions.
+    /// @notice Emergency withdraw a stuck token. Restricted for active reward tokens.
     function emergencyWithdraw(address token, uint256 amount, address to) external onlyOwner {
+        require(to != address(0), "Invalid recipient");
+        require(!isRewardToken[token], "Cannot withdraw active reward token");
         IERC20(token).safeTransfer(to, amount);
+    }
+
+    function setTreasury(address _treasury) external onlyOwner {
+        require(_treasury != address(0), "Invalid address");
+        treasury = _treasury;
+    }
+
+    function setFactory(address _factory) external onlyOwner {
+        factory = IUniswapV2Factory(_factory);
+    }
+
+    function setTriggerConfig(
+        uint256 _minInterval,
+        uint256 _bountyCap,
+        uint256 _bountyBps,
+        uint256 _minLPBalance
+    ) external onlyOwner {
+        require(_bountyBps <= 500, "Bounty too high"); // Max 5%
+        triggerMinInterval = _minInterval;
+        triggerBountyCap = _bountyCap;
+        triggerBountyBps = _bountyBps;
+        triggerMinLPBalance = _minLPBalance;
+        emit TriggerConfigUpdated(_minInterval, _bountyCap, _bountyBps, _minLPBalance);
+    }
+
+    /// @notice Remove a zero-balance reward token from the array.
+    function removeRewardToken(uint256 index) external onlyOwner {
+        require(index < rewardTokens.length, "Index out of bounds");
+        address token = rewardTokens[index];
+        require(IERC20(token).balanceOf(address(this)) == 0, "Token has balance");
+
+        uint256 lastIndex = rewardTokens.length - 1;
+        if (index != lastIndex) {
+            rewardTokens[index] = rewardTokens[lastIndex];
+        }
+        rewardTokens.pop();
+        isRewardToken[token] = false;
     }
 
     // ═══════════════════════════════════════════════════════════════════
@@ -308,12 +476,22 @@ contract FeeManagerV2 is Ownable, ReentrancyGuard {
         if (amount == 0 || totalTrackedShares == 0) return;
 
         if (!isRewardToken[token]) {
+            require(rewardTokens.length < MAX_REWARD_TOKENS, "Reward token cap reached");
             rewardTokens.push(token);
             isRewardToken[token] = true;
         }
 
         accRewardPerShare[token] += (amount * PRECISION) / totalTrackedShares;
         emit FeesAccumulated(token, amount, accRewardPerShare[token]);
+    }
+
+    function _calculateBounty(uint256 amount) internal view returns (uint256) {
+        if (triggerBountyBps == 0) return 0;
+        uint256 bounty = (amount * triggerBountyBps) / 10000;
+        if (triggerBountyCap > 0 && bounty > triggerBountyCap) {
+            bounty = triggerBountyCap;
+        }
+        return bounty;
     }
 
     /// @dev Settle accrued rewards into pendingRewards for a holder.

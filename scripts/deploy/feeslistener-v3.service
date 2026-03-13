@@ -1,0 +1,26 @@
+[Unit]
+Description=DonnySwap Fees Listener v3
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/backend/DonnySwap
+ExecStart=/usr/bin/node /root/backend/DonnySwap/scripts/feesListener_v3.js
+Restart=always
+RestartSec=30
+EnvironmentFile=/root/backend/deployer/.env
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=feeslistener-v3
+
+# Hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/root/backend/DonnySwap
+
+[Install]
+WantedBy=multi-user.target
