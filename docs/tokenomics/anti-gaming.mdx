@@ -1,0 +1,73 @@
+---
+title: "Anti-Gaming"
+description: "Mechanism design preventing extraction attacks, mint-and-flip, vault drainage, and MEV gaming."
+---
+
+# Anti-Gaming Mechanisms
+
+The tokenomics system is designed to make all extraction strategies net-negative.
+
+## Mechanism Table
+
+| Mechanism | Protects Against |
+|-----------|-----------------|
+| Soulbound NFTs (ERC-5192) | Claim sniping, secondary market speculation |
+| Smooth time-weighted redemption (0→80% over 365d) | Mint-and-flip, impulsive redemption |
+| Smooth sliding redemption fee (20%→3% over time) | Short-term extraction, cliff gaming |
+| 20% vault reserve (baked into pro-rata formula) | Bank-run vault drainage, race conditions |
+| 48-hour redemption cooldown per address | Bot-driven vault drainage |
+| 70% LP burn on mint | Makes ALL gaming cycles net-negative |
+| `activeSupply`-based pricing | Natural market-driven supply equilibrium |
+| Adaptive vault reinvestment ratio | Vault depletion death spiral |
+| Rolling vault target (not ATH) | Whale-inflated target manipulation |
+| Capped caller bounty on permissionless triggers | MEV bounty gaming |
+| Minimum LP balance threshold for trigger | Dust griefing on permissionless calls |
+| LP auto-registration via Factory validation | Operational bottleneck bypass |
+
+## Why Redeem-to-Cheapen-Then-Remint Fails
+
+The most obvious attack: redeem NFTs to lower `activeSupply` (making new mints cheaper), then mint at the lower price.
+
+This fails because:
+
+1. **70% of original LP is permanently burned** — you only deposited 30% to vault
+2. **Time weight resets to 0%** on the new mint — must wait another year for full value
+3. **Up to 20% redemption fee** on early exit
+4. **Net loss every cycle** — each round destroys 70%+ of the LP involved
+
+## Vault Reserve Design
+
+The 20% reserve isn't a threshold that can be drained — it's baked into the pro-rata formula:
+
+```
+vaultProRata = (vaultBalance * 0.8 * mintCostLP) / totalActiveMintCost
+```
+
+Even if every holder redeems simultaneously, the math ensures 20% remains. This is deterministic regardless of redemption ordering.
+
+## Adaptive Harvest
+
+The LPVault's harvest system adjusts allocation based on vault health:
+
+| Vault Health | Retain | DSFO Bonus | Treasury |
+|-------------|--------|------------|----------|
+| Above 80% of target | 60% | 25% | 15% |
+| 50-80% of target | 80% | 12% | 8% |
+| Below 50% of target | 95% | 3% | 2% |
+
+When the vault is stressed, it retains more LP to protect redemptions. When healthy, it distributes more surplus to holders.
+
+## Soulbound Enforcement
+
+The `_update()` override in DSFONFTv3 blocks all transfers:
+
+```solidity
+if (from != address(0) && to != address(0)) {
+    revert("DSFO: soulbound, transfers disabled");
+}
+```
+
+Only mint (from=0) and burn (to=0) are allowed. This prevents:
+- Buying NFTs just before a fee distribution
+- Selling NFTs to avoid redemption penalties
+- Secondary market speculation disconnected from protocol participation

@@ -1,0 +1,127 @@
+---
+title: "Fee Listener"
+description: "Off-chain service that triggers FeeSplitter distribution and FeeManager LP breakdown with slippage protection."
+---
+
+# Fee Listener v3
+
+`scripts/feesListener_v3.js` is the off-chain service that automates the fee distribution pipeline.
+
+## What It Does
+
+Every cycle (default: 4 hours):
+
+1. **FeeSplitter.distributeBatch()** — Routes accumulated protocol fee LP from FeeSplitter to FeeManager and LPVault
+2. **Compute slippage bounds** — Reads on-chain reserves and total supply for each LP token to calculate expected output with 2% tolerance
+3. **FeeManager.triggerBreakdownAndDistribution()** — Breaks LP into underlying tokens with slippage protection
+4. **Snapshot holders** — Reads all DSFO holder balances in batches of 50
+5. **Record to API** — Posts fee batch data to the backend for the frontend dashboard
+
+## Configuration
+
+| Env Variable | Required | Default | Description |
+|-------------|----------|---------|-------------|
+| `FEE_MANAGER_ADDRESS` | Yes | — | FeeManagerV2 contract address |
+| `FEE_SPLITTER_ADDRESS` | Yes | — | FeeSplitter contract address |
+| `FEE_MANAGER_OWNER_KEY` | One of these | — | Private key for signing trigger txs |
+| `MNEMONIC` | One of these | — | Alternative to private key |
+| `FEE_LISTENER_API_BASE_URL` | No | `http://localhost:3002` | Backend API base URL |
+| `FEES_LISTENER_INTERVAL_MS` | No | 14400000 (4h) | Poll interval in milliseconds |
+
+## RPC Fallback
+
+Uses viem's ranked fallback transport across 3 QuickNode endpoints:
+
+```javascript
+const RPC_URLS = [
+  'https://quicknode1.peaq.xyz',
+  'https://quicknode2.peaq.xyz',
+  'https://quicknode3.peaq.xyz',
+];
+const transport = fallback(RPC_URLS.map((url) => http(url)), { rank: true });
+```
+
+viem automatically ranks endpoints by latency and switches on failure.
+
+## Slippage Protection
+
+Before calling `triggerBreakdownAndDistribution`, the listener computes expected output amounts:
+
+```
+expectedAmount0 = (lpBalance * reserve0) / totalSupply
+expectedAmount1 = (lpBalance * reserve1) / totalSupply
+minAmount = expected - (expected * 2%)
+```
+
+If reserve reads fail, it falls back to the unprotected overload (no slippage params).
+
+## systemd Service
+
+Deploy as a systemd service using `scripts/deploy/feeslistener-v3.service`:
+
+```ini
+[Unit]
+Description=DonnySwap Fees Listener v3
+After=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/backend/DonnySwap
+ExecStart=/usr/bin/node /root/backend/DonnySwap/scripts/feesListener_v3.js
+Restart=always
+RestartSec=30
+EnvironmentFile=/root/backend/deployer/.env
+
+# Hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/root/backend/DonnySwap
+
+[Install]
+WantedBy=multi-user.target
+```
+
+### Installation
+
+```bash
+sudo cp scripts/deploy/feeslistener-v3.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable feeslistener-v3
+sudo systemctl start feeslistener-v3
+```
+
+### Monitoring
+
+```bash
+sudo journalctl -u feeslistener-v3 -f          # Live logs
+sudo systemctl status feeslistener-v3           # Service status
+```
+
+## Cycle Flow
+
+```mermaid
+flowchart TD
+    Start["Cycle Start<br/>(every 4 hours)"]
+    Dist["distributeFeeSplitter()<br/>Check LP balances in FeeSplitter<br/>Call distributeBatch()"]
+    Snap["fetchHolderSnapshot()<br/>Read holderCount<br/>Batch reads (groups of 50)"]
+    Slip["computeMinAmounts()<br/>Read getReserves(), totalSupply()<br/>Apply 2% slippage tolerance"]
+    Trigger["triggerBreakdownAndDistribution()<br/>Submit tx with slippage arrays<br/>Parse FeesAccumulated events"]
+    Batch["submitFeeBatch()<br/>POST to backend API<br/>Record historical data"]
+    Wait["Wait for next cycle"]
+    Fallback["Fallback: unprotected trigger<br/>(no slippage params)"]
+
+    Start --> Dist
+    Dist --> Snap
+    Snap --> Slip
+    Slip -->|"success"| Trigger
+    Slip -->|"reserve read fails"| Fallback
+    Fallback --> Trigger
+    Trigger --> Batch
+    Batch --> Wait
+    Wait -->|"4 hours"| Start
+
+    style Start fill:#5bc0de,color:#000
+    style Trigger fill:#5cb85c,color:#000
+    style Fallback fill:#f0ad4e,color:#000
+```

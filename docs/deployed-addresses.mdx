@@ -1,0 +1,58 @@
+---
+title: "Deployed Addresses"
+description: "All DonnySwap contract addresses on PEAQ mainnet (chain ID 3338)."
+---
+
+# Deployed Addresses
+
+All contracts are deployed on **PEAQ mainnet** (chain ID `3338`).
+
+## v3 Tokenomics Contracts
+
+| Contract | Address | Explorer |
+|----------|---------|----------|
+| DSFO NFT v3 (Soulbound) | `0x441f5eB4608797D2E9E5F8130A1Bf7c742d3c50A` | [Subscan](https://peaq.subscan.io/account/0x441f5eB4608797D2E9E5F8130A1Bf7c742d3c50A?tab=contract) |
+| FeeManager v2 (Claims) | `0x852a62798B691eB5d8424169797b25e786DF4911` | [Subscan](https://peaq.subscan.io/account/0x852a62798B691eB5d8424169797b25e786DF4911?tab=contract) |
+| LP Vault | `0x4f86cc07AbAE6F4BD749857B2EC7C7e67C5AcAbf` | [Subscan](https://peaq.subscan.io/account/0x4f86cc07AbAE6F4BD749857B2EC7C7e67C5AcAbf?tab=contract) |
+| Fee Splitter | `0xe0a8AdBd3A9c780407A7993343589d7858CB1ba0` | [Subscan](https://peaq.subscan.io/account/0xe0a8AdBd3A9c780407A7993343589d7858CB1ba0?tab=contract) |
+
+## DEX Core Contracts
+
+| Contract | Address | Explorer |
+|----------|---------|----------|
+| SushiSwapFactory | `0x60659f5997C8D58DC4E4dcC1bdB89E8f62Be40E6` | [Sourcify](https://repo.sourcify.dev/3338/0x60659f5997C8D58DC4E4dcC1bdB89E8f62Be40E6) |
+| UniswapV2Router02 | `0xBa6777062F71318de6b681370189055904e20D21` | [Sourcify](https://repo.sourcify.dev/3338/0xBa6777062F71318de6b681370189055904e20D21) |
+
+## Tokens
+
+| Token | Address | Explorer |
+|-------|---------|----------|
+| WPEAQ (Wrapped PEAQ) | `0x3cD66d2e1fac1751B0A20BeBF6cA4c9699Bb12d7` | [Subscan](https://peaq.subscan.io/token/0x3cD66d2e1fac1751B0A20BeBF6cA4c9699Bb12d7) |
+| MRBL (Marbles) | `0xe488F2123f1bd88789817f09cd1989ec41Ae9baC` | [Subscan](https://peaq.subscan.io/account/0xe488F2123f1bd88789817f09cd1989ec41Ae9baC?tab=contract) |
+| MRBL-WPEAQ LP Pair | `0x6D4e72A465427b60EEd0F819e946d54A7FD98Bcd` | [Subscan](https://peaq.subscan.io/account/0x6D4e72A465427b60EEd0F819e946d54A7FD98Bcd) |
+
+## Legacy Contracts
+
+| Contract | Address | Status |
+|----------|---------|--------|
+| DSFO NFT v1 | `0x9810eD5D5d8b3646575974296eC697d4CBbF56cF` | Deprecated |
+
+## Chain Configuration
+
+```json
+{
+  "chainId": 3338,
+  "chainName": "PEAQ",
+  "nativeCurrency": {
+    "name": "PEAQ",
+    "symbol": "PEAQ",
+    "decimals": 18
+  },
+  "rpcUrls": [
+    "https://quicknode1.peaq.xyz",
+    "https://quicknode2.peaq.xyz",
+    "https://quicknode3.peaq.xyz"
+  ],
+  "blockExplorerUrls": ["https://peaq.subscan.io"]
+}
+```

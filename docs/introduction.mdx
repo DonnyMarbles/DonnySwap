@@ -1,0 +1,43 @@
+---
+title: "Introduction"
+description: "DonnySwap is a Uniswap V2 fork on PEAQ blockchain with soulbound fractional ownership NFTs and claim-based fee distribution."
+---
+
+# DonnySwap v3
+
+DonnySwap is a decentralized exchange running on [PEAQ](https://www.peaq.network/) (chain ID 3338), forked from Uniswap V2. It extends the base AMM with a soulbound NFT ownership layer that lets users become fractional owners of the protocol and earn a share of every trade.
+
+## Core Components
+
+| Component | Purpose |
+|-----------|---------|
+| **Uniswap V2 DEX** | AMM with Factory + Router. 0.3% swap fee, ~0.05% protocol fee |
+| **DSFO NFT v3** | Soulbound (ERC-5192) fractional ownership tokens. No transfers — only mint or burn |
+| **FeeManager v2** | Claim-based fee accumulator. Breaks LP into underlying tokens, distributes per-share |
+| **LPVault** | Protocol-owned MRBL-PEAQ liquidity. Backs NFT redemptions and earns harvest surplus |
+| **FeeSplitter** | Sits at `Factory.feeTo`. Routes protocol fee LP: 70/30 split for MRBL-PEAQ, 100% FeeManager for others |
+
+## Tokens
+
+- **PEAQ** — Native chain token. Gas and base pair.
+- **WPEAQ** — Wrapped PEAQ (ERC-20). Used in LP pairs.
+- **MRBL** — Marbles. 1M fixed supply. Required for DSFO minting (paired with PEAQ for LP).
+- **DSFO** — DonnySwap Fractional Ownership. Soulbound NFT. Entitles holder to protocol fees.
+
+## How It Works (TL;DR)
+
+1. Users add MRBL + PEAQ liquidity to get LP tokens
+2. LP tokens are used to mint soulbound DSFO NFTs (price increases per mint)
+3. 70% of the LP is burned forever (permanent liquidity), 30% goes to LPVault
+4. Every swap on the DEX generates protocol fees (LP tokens sent to FeeSplitter)
+5. FeeSplitter routes fees: 70% to FeeManager (broken down and distributed), 30% to LPVault (for MRBL-PEAQ pairs)
+6. DSFO holders claim accumulated fees anytime from the Fee Dashboard
+7. Holders can burn their NFT to redeem LP from the vault (time-weighted, with sliding fee)
+
+## Tech Stack
+
+- **Blockchain**: PEAQ (EVM-compatible, chain ID 3338)
+- **Contracts**: Solidity 0.8.28, OpenZeppelin 5.x, Hardhat 2.28
+- **Frontend**: React 19, Vite 7, viem, styled-components, RainbowKit
+- **Backend**: Node.js fee listener (viem), systemd service
+- **RPC**: QuickNode endpoints with ranked fallback

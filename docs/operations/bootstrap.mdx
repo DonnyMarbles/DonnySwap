@@ -1,0 +1,91 @@
+---
+title: "Bootstrap"
+description: "Initial liquidity bootstrap plan: tilted pool ratio, founder mints, and per-address caps."
+---
+
+# Bootstrap Plan
+
+After deploying v3 contracts and removing existing liquidity, the pool must be re-seeded with a tilted ratio to set the initial MRBL price.
+
+## Bootstrap Sequence
+
+### 1. Remove Existing Liquidity
+
+Remove all deployer-held LP from the MRBL-PEAQ pool:
+
+```bash
+npx hardhat run scripts/deploy/remove-liquidity.cjs --network peaq --config hardhat.config.cjs
+```
+
+This drains the deployer's LP position, returning MRBL and WPEAQ.
+
+### 2. Re-Add Liquidity with Tilted Ratio
+
+Add liquidity at the target MRBL price point. Example for MRBL at ~$0.60 with PEAQ at ~$0.006:
+
+```
+MRBL deposit:  5,987 MRBL
+PEAQ deposit:  10,000 PEAQ
+Implied ratio: 1 MRBL ≈ 1.67 PEAQ ≈ $0.01
+```
+
+The exact amounts should be calculated using `calc-tilt2.cjs` to model MRBL appreciation scenarios.
+
+### 3. Set Per-Address Mint Cap
+
+Prevent whale minting during early phase:
+
+```javascript
+await dsfoNft.setMaxMintsPerAddress(25);
+```
+
+The owner is exempt from this cap for bootstrap minting.
+
+### 4. Founder Bootstrap Mints
+
+Mint initial DSFO NFTs to seed the holder base and FeeManager:
+
+```javascript
+// Approve LP tokens
+await lpToken.approve(dsfoNftAddress, batchMintPrice);
+// Mint
+await dsfoNft.mint(quantity);
+```
+
+### 5. Start Fee Listener
+
+```bash
+sudo systemctl start feeslistener-v3
+```
+
+### 6. Verify
+
+- FeeSplitter is receiving LP from trades (check balance on Subscan)
+- FeeManager trigger works (check FeesAccumulated events)
+- Fee dashboard shows claimable amounts
+- Vault health is at 100%
+
+## Price Calculator
+
+`calc-tilt2.cjs` simulates MRBL appreciation based on:
+
+- Initial deposit ratio
+- DSFO minting demand scenarios
+- LP burn effects on circulating supply
+- Fee income projections
+
+```bash
+node calc-tilt2.cjs
+```
+
+## Post-Bootstrap Checklist
+
+- [ ] Liquidity removed from old pool
+- [ ] New liquidity added at target ratio
+- [ ] Per-address mint cap set
+- [ ] Founder mints completed
+- [ ] Fee listener running (systemd)
+- [ ] Frontend connected to v3 contracts
+- [ ] Fee dashboard showing data
+- [ ] First FeeSplitter.distribute() executed
+- [ ] First FeeManager.trigger() executed

@@ -1,0 +1,110 @@
+---
+title: "Fee Distribution"
+description: "Claim-based fee distribution: FeeSplitter routes protocol fees, FeeManager accumulates rewards per share, holders claim anytime."
+---
+
+# Fee Distribution
+
+DonnySwap uses a **claim-based** (MasterChef-style) fee distribution model. Fees accumulate per-share on-chain. Holders claim whenever they want — no gas-heavy distribution loops.
+
+## Revenue Flow
+
+```mermaid
+flowchart TD
+    Swap["Swap on any pair<br/>0.3% fee"]
+    Pair["V2 Pair _mintFee()<br/>~0.05% as LP tokens"]
+    FS["FeeSplitter"]
+    FM["FeeManager v2"]
+    LPV["LPVault"]
+    Router["Router.removeLiquidity()<br/>LP → MRBL + WPEAQ"]
+    Acc["accRewardPerShare +=<br/>amount * 1e36 / totalShares"]
+    Claim["Holder calls claimAllFees()<br/>Receives MRBL + WPEAQ"]
+    Bounty["1% Caller Bounty"]
+    Treasury["Treasury Fallback<br/>(if no holders)"]
+
+    Swap --> Pair
+    Pair -->|"LP tokens to feeTo"| FS
+    FS -->|"MRBL-PEAQ: 70%<br/>Other: 100%"| FM
+    FS -->|"MRBL-PEAQ: 30%"| LPV
+    FM --> Router
+    Router --> Bounty
+    Router --> Acc
+    Acc -->|"accumulated"| Claim
+    FM -.->|"no holders"| Treasury
+
+    style FS fill:#5bc0de,color:#000
+    style FM fill:#5cb85c,color:#000
+    style LPV fill:#f0ad4e,color:#000
+    style Claim fill:#7C3AED,color:#fff
+```
+
+### Step 1: Protocol Fee Generation
+
+Every swap on any DonnySwap pair generates a 0.3% fee. Of that, approximately 0.05% is minted as LP tokens and sent to `Factory.feeTo` — which is the **FeeSplitter** contract.
+
+This is mandatory and ubypassable. The V2 Pair contract's `_mintFee()` sends LP to the `feeTo` address regardless of which router or frontend the trader uses.
+
+### Step 2: FeeSplitter Routing
+
+The FeeSplitter examines each LP token it holds and routes it:
+
+| LP Token Type | FeeManager | LPVault |
+|--------------|-----------|---------|
+| MRBL-PEAQ LP | 70% | 30% |
+| All other LP | 100% | 0% |
+
+The 30% MRBL-PEAQ LP going to LPVault strengthens the redemption backstop and generates harvest surplus.
+
+### Step 3: FeeManager Breakdown
+
+When `triggerBreakdownAndDistribution()` is called:
+
+1. For each registered LP token held by FeeManager
+2. Calls `Router.removeLiquidity()` to break LP into underlying tokens (e.g., MRBL + WPEAQ)
+3. Deducts caller bounty (default 1%, capped)
+4. Accumulates remaining tokens into `accRewardPerShare` (scaled by 1e36)
+
+```solidity
+accRewardPerShare[token] += (amount * PRECISION) / totalTrackedShares;
+```
+
+### Step 4: Claiming
+
+DSFO holders call `claimAllFees()` or `claimFees(address[] tokens)` to withdraw accumulated rewards.
+
+Claimable amount per holder per token:
+
+```
+claimable = (holderBalance * accRewardPerShare[token]) / PRECISION - rewardDebt[holder][token] + pendingRewards[holder][token]
+```
+
+## Two Revenue Streams for DSFO Holders
+
+### Stream 1: Direct Fee Claims (FeeManager)
+
+- Source: Protocol fees from all trading pairs
+- Mechanism: `accRewardPerShare` accumulation
+- Claim: `claimAllFees()` on FeeManager
+- Frequency: Anytime (accumulates between claims)
+
+### Stream 2: Vault Harvest Bonus (LPVault → FeeManager)
+
+- Source: LPVault surplus above target
+- Mechanism: `harvest()` sends DSFO bonus LP to FeeManager
+- The LP is then broken down in the next trigger cycle
+- This is additional income on top of direct trading fees
+
+## Trigger Configuration
+
+The trigger is permissionless — anyone can call it:
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `triggerMinInterval` | 4 hours | Minimum time between triggers |
+| `triggerBountyBps` | 100 (1%) | Caller incentive as % of output |
+| `triggerBountyCap` | Set by governance | Max absolute bounty per token |
+| `triggerMinLPBalance` | 0 | Minimum LP to prevent dust griefing |
+
+## Treasury Fallback
+
+When `totalTrackedShares == 0` (no DSFO holders), triggering sends all LP to the treasury address instead of reverting. This prevents fees from getting stuck.

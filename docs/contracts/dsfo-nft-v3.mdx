@@ -1,0 +1,115 @@
+---
+title: "DSFONFTv3"
+description: "Soulbound fractional ownership NFT contract. ERC-721 + ERC-5192. Linear bonding curve pricing, 70/30 LP split, mint and redeem."
+---
+
+# DSFONFTv3
+
+**Address**: `0x441f5eB4608797D2E9E5F8130A1Bf7c742d3c50A`
+
+Soulbound (ERC-5192) fractional ownership NFTs. No transfers — only mint or redeem (burn). Price follows a linear bonding curve based on active supply.
+
+**Inherits**: ERC721URIStorage, Ownable, ReentrancyGuard, Pausable
+
+## State Variables
+
+| Variable | Type | Description |
+|----------|------|-------------|
+| `lpToken` | IERC20 | MRBL-PEAQ LP token used for minting |
+| `feeManager` | IFeeManager | Notified on mint/burn for share tracking |
+| `lpVault` | ILPVault | Receives 30% of LP, handles redemption |
+| `basePrice` | uint256 | Floor price in LP tokens (wei) |
+| `priceStep` | uint256 | Price increment per active NFT (wei) |
+| `activeSupply` | uint256 | Count of living (non-redeemed) NFTs |
+| `nextTokenId` | uint256 | Monotonically increasing token ID counter |
+| `burnBps` | uint256 | LP burn ratio (default 7000 = 70%) |
+| `vaultBps` | uint256 | LP vault ratio (default 3000 = 30%) |
+| `maxMintsPerAddress` | uint256 | Per-address cap (0 = unlimited, owner exempt) |
+| `mintCount` | mapping(address => uint256) | Mints per address |
+
+## Public Functions
+
+### `currentMintPrice() → uint256`
+
+Returns the current price to mint one NFT.
+
+```
+price = basePrice + (activeSupply * priceStep)
+```
+
+### `batchMintPrice(uint256 quantity) → uint256`
+
+Returns the total cost to mint `quantity` NFTs (sum of sequential prices).
+
+### `mint(uint256 quantity)`
+
+Mint one or more soulbound DSFO NFTs.
+
+**Requirements**:
+- `quantity` must be 1-50
+- Caller must have approved sufficient LP tokens
+- Must not exceed per-address cap (if set)
+- Contract must not be paused
+
+**Effects**:
+1. Pulls `batchMintPrice(quantity)` LP from caller
+2. Sends 70% to `0xdead` (permanent burn)
+3. Sends 30% to LPVault, calls `depositFromMint()` per NFT
+4. Mints NFTs, emits `Locked` (ERC-5192) and `Mint` events
+5. Notifies FeeManager via `handleOwnershipChange(address(0), minter, quantity)`
+
+### `redeem(uint256 tokenId)`
+
+Burn a single DSFO NFT to redeem LP from the vault.
+
+**Requirements**:
+- Caller must own the token
+- Contract must not be paused
+
+**Effects**:
+1. Burns the NFT (triggers FeeManager notification)
+2. Decrements `activeSupply`
+3. Calls `LPVault.processRedemption(tokenId, holder)` which transfers LP to holder
+
+### `redeemBatch(uint256[] tokenIds)`
+
+Burn up to 50 NFTs in one transaction.
+
+### `locked(uint256 tokenId) → bool`
+
+ERC-5192: Returns `true` for all existing tokens (all are permanently locked).
+
+## View Functions
+
+| Function | Returns | Description |
+|----------|---------|-------------|
+| `totalActiveSupply()` | uint256 | Same as `activeSupply` |
+| `totalMinted()` | uint256 | Same as `nextTokenId` — total ever minted |
+| `baseTokenURI()` | string | Current base URI for token metadata |
+| `supportsInterface(bytes4)` | bool | ERC-165 — includes ERC-5192 (0xb45a3c0e) |
+
+## Admin Functions (onlyOwner)
+
+| Function | Description |
+|----------|-------------|
+| `setPricing(uint256 basePrice, uint256 priceStep)` | Update pricing parameters |
+| `setBurnVaultSplit(uint256 burnBps, uint256 vaultBps)` | Update LP split (must sum to 10000) |
+| `setFeeManager(address)` | Update FeeManager reference |
+| `setLPVault(address)` | Update LPVault reference |
+| `setMaxMintsPerAddress(uint256)` | Set per-address mint cap (0 = unlimited) |
+| `setBaseTokenURI(string)` | Set base URI for NFT metadata |
+| `pause()` / `unpause()` | Pause/unpause minting and redemption |
+
+## Events
+
+```solidity
+event Mint(address indexed minter, uint256 indexed tokenId, uint256 lpCost, uint256 lpBurned, uint256 lpToVault);
+event Redeem(address indexed holder, uint256 indexed tokenId, uint256 lpReturned);
+event Locked(uint256 tokenId);  // ERC-5192
+event PricingUpdated(uint256 basePrice, uint256 priceStep);
+event BurnVaultSplitUpdated(uint256 burnBps, uint256 vaultBps);
+event FeeManagerUpdated(address indexed newFeeManager);
+event LPVaultUpdated(address indexed newLPVault);
+event BaseTokenURIUpdated(string newBaseURI);
+event MaxMintsPerAddressUpdated(uint256 newMax);
+```

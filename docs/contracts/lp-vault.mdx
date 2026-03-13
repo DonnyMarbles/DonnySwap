@@ -1,0 +1,118 @@
+---
+title: "LPVault"
+description: "Protocol-owned MRBL-PEAQ liquidity vault. Backs NFT redemptions with time-weighted returns and adaptive surplus harvesting."
+---
+
+# LPVault
+
+**Address**: `0x4f86cc07AbAE6F4BD749857B2EC7C7e67C5AcAbf`
+
+Holds MRBL-PEAQ LP from DSFO minting (30% per mint) and FeeSplitter (30% of MRBL-PEAQ protocol fees). Provides time-weighted redemption for DSFO holders and distributes surplus via harvest.
+
+**Inherits**: Ownable, ReentrancyGuard
+
+## State Variables
+
+| Variable | Type | Description |
+|----------|------|-------------|
+| `mrblPeaqLP` | IERC20 | The MRBL-PEAQ LP token |
+| `dsfoToken` | address | DSFO contract (authorized caller) |
+| `feeSplitter` | address | FeeSplitter contract |
+| `feeManager` | address | Receives DSFO bonus from harvest |
+| `treasury` | address | Receives treasury share from harvest |
+| `totalActiveMintCost` | uint256 | Sum of all active NFT LP deposits |
+| `redemptionCooldown` | uint256 | Cooldown between redemptions per address (default 48h) |
+| `harvestMinInterval` | uint256 | Minimum time between harvests (default 7 days) |
+
+## Deposits
+
+### `depositFromMint(uint256 tokenId, uint256 lpAmount)` (onlyDsfoToken)
+
+Called by DSFO contract during mint. Records a `MintRecord`:
+
+```solidity
+struct MintRecord {
+    uint256 mintCostLP;    // LP tokens deposited for this NFT
+    uint256 mintTimestamp; // When the NFT was minted
+}
+```
+
+Adds `lpAmount` to `totalActiveMintCost`.
+
+### `depositFromFees(uint256 lpAmount)` (permissionless)
+
+Accept LP deposits from any source. Caller must have approved LP tokens. Used by FeeSplitter to deposit the 30% MRBL-PEAQ share.
+
+## Redemption
+
+### `processRedemption(uint256 tokenId, address holder) → uint256 lpReturned` (onlyDsfoToken)
+
+Called by DSFO contract when a holder burns their NFT.
+
+**Calculation**:
+1. **Time weight**: 0% → 80% linear over 365 days
+2. **Pro-rata**: `(vaultBalance * 0.8 * mintCostLP) / totalActiveMintCost`
+3. **Gross**: `min(timeWeighted, proRata)`
+4. **Fee**: Sliding 20% → 3% over 365 days
+5. **Net**: `gross - fee`
+
+**Fee split**: 50% stays in vault, 50% sent to `0xdead` (burned)
+
+**Requirements**: 48-hour cooldown between redemptions per address.
+
+### `previewRedemption(uint256 tokenId) → (grossAmount, fee, netAmount, timeWeightBps, feeBps)`
+
+View function to preview redemption values before committing.
+
+## Harvest (Permissionless)
+
+### `harvest()`
+
+Distributes vault surplus above target. Anyone can call after `harvestMinInterval`.
+
+**Vault target**: `0.3 * totalActiveMintCost` — rolling, adjusts with mints/redemptions.
+
+If vault balance ≤ target, harvest is skipped (no-op) to protect redemptions.
+
+**Adaptive allocation tiers**:
+
+| Vault Health | Retain | DSFO Bonus | Treasury | Condition |
+|-------------|--------|------------|----------|-----------|
+| Healthy | 60% | 25% | 15% | Balance ≥ 80% of target |
+| Medium | 80% | 12% | 8% | Balance 50-80% of target |
+| Low | 95% | 3% | 2% | Balance < 50% of target |
+
+Caller receives a bounty (default 1%, capped at `harvestBountyCap`).
+
+## View Functions
+
+| Function | Returns | Description |
+|----------|---------|-------------|
+| `vaultBalance()` | uint256 | Current LP balance in vault |
+| `vaultTarget()` | uint256 | Rolling target: 30% of totalActiveMintCost |
+| `vaultHealthBps()` | uint256 | Health ratio in bps (10000 = 100%) |
+| `mintRecords(uint256)` | MintRecord | Per-NFT deposit record |
+
+## Admin Functions (onlyOwner)
+
+| Function | Description |
+|----------|-------------|
+| `emergencyWithdraw(token, amount, to)` | Withdraw any stuck ERC-20 token |
+| `setDsfoToken(address)` | Update DSFO token reference |
+| `setFeeSplitter(address)` | Update FeeSplitter reference |
+| `setFeeManager(address)` | Update FeeManager reference |
+| `setTreasury(address)` | Update treasury address |
+| `setRedemptionCooldown(uint256)` | Update cooldown period |
+| `setHarvestConfig(minInterval, bountyCap, bountyBps)` | Update harvest parameters (bounty max 5%) |
+| `setHarvestTier(tier, retainBps, dsfoBonusBps, treasuryBps)` | Update harvest allocation for tier 0/1/2 (must sum to 10000) |
+
+## Events
+
+```solidity
+event DepositFromMint(uint256 indexed tokenId, uint256 lpAmount);
+event DepositFromFees(uint256 lpAmount);
+event Redemption(address indexed holder, uint256 indexed tokenId, uint256 lpReturned, uint256 feeCharged, uint256 feeToVault, uint256 feeBurned);
+event Harvest(uint256 retained, uint256 dsfoBonusSent, uint256 treasurySent, uint256 callerBounty, address indexed caller);
+event HarvestConfigUpdated(uint256 minInterval, uint256 bountyCap, uint256 bountyBps);
+event RedemptionCooldownUpdated(uint256 newCooldown);
+```

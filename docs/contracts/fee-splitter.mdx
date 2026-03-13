@@ -1,0 +1,67 @@
+---
+title: "FeeSplitter"
+description: "Pair-aware LP fee router. Sits at Factory.feeTo. Routes protocol fee LP tokens: 70/30 for MRBL-PEAQ, 100% FeeManager for others."
+---
+
+# FeeSplitter
+
+**Address**: `0xe0a8AdBd3A9c780407A7993343589d7858CB1ba0`
+
+Sits at `Factory.feeTo`. Receives protocol fee LP tokens from all trading pairs. Routes them based on pair type.
+
+**Inherits**: Ownable
+
+## How It Receives Fees
+
+The UniswapV2 Pair contract's internal `_mintFee()` function mints protocol fee LP tokens to the `feeTo` address on every swap. Since `Factory.feeTo` is set to the FeeSplitter, it automatically accumulates LP from all pairs.
+
+This is **mandatory and ubypassable** — regardless of which router, aggregator, or frontend is used for the swap, the fee accrues to FeeSplitter.
+
+## Routing Logic
+
+| LP Token | FeeManager | LPVault |
+|----------|-----------|---------|
+| MRBL-PEAQ LP (`mrblPeaqPair`) | 70% | 30% |
+| All other pair LP | 100% | 0% |
+
+The 30% MRBL-PEAQ share going to LPVault strengthens the redemption backstop and generates harvest surplus for DSFO holders.
+
+## State Variables
+
+| Variable | Type | Description |
+|----------|------|-------------|
+| `factory` | IUniswapV2Factory | Factory reference |
+| `feeManager` | address | Receives majority of fees |
+| `lpVault` | address | Receives 30% of MRBL-PEAQ LP |
+| `mrblPeaqPair` | address | The MRBL-PEAQ pair address for split detection |
+| `feeManagerBps` | uint256 | FeeManager share (default 7000 = 70%) |
+| `lpVaultBps` | uint256 | LPVault share (default 3000 = 30%) |
+
+## Core Functions
+
+### `distribute(address lpToken)` (permissionless)
+
+Distribute accumulated LP tokens for a specific pair. Checks if `lpToken == mrblPeaqPair` to determine routing.
+
+### `distributeBatch(address[] lpTokens)` (permissionless)
+
+Batch distribute for multiple pairs in one transaction. Called by the fee listener before triggering FeeManager breakdown.
+
+## Admin Functions (onlyOwner)
+
+| Function | Description |
+|----------|-------------|
+| `setSplitRatio(feeManagerBps, lpVaultBps)` | Update split (must sum to 10000) |
+| `setFeeManager(address)` | Update FeeManager address |
+| `setLPVault(address)` | Update LPVault address |
+| `setMrblPeaqPair(address)` | Update MRBL-PEAQ pair address |
+
+## Events
+
+```solidity
+event Split(address indexed lpToken, uint256 toFeeManager, uint256 toLPVault);
+event SplitRatioUpdated(uint256 feeManagerBps, uint256 lpVaultBps);
+event FeeManagerUpdated(address indexed newFeeManager);
+event LPVaultUpdated(address indexed newLPVault);
+event MrblPeaqPairUpdated(address indexed newPair);
+```

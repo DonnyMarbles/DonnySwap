@@ -1,0 +1,135 @@
+---
+title: "FeeManagerV2"
+description: "Claim-based fee distribution for DSFO NFT holders. Breaks LP tokens into underlying assets, accumulates rewards per share."
+---
+
+# FeeManagerV2
+
+**Address**: `0x852a62798B691eB5d8424169797b25e786DF4911`
+
+Breaks down LP tokens into underlying assets and accumulates rewards per share. Holders call `claimAllFees()` to withdraw — no gas-heavy distribution loops. Gas cost of triggering is O(LP_tokens) instead of O(LP_tokens x holders).
+
+**Inherits**: Ownable, ReentrancyGuard
+
+## Constants
+
+| Constant | Value | Description |
+|----------|-------|-------------|
+| `PRECISION` | 1e36 | Reward accounting precision |
+| `MAX_REWARD_TOKENS` | 50 | Maximum unique reward token types |
+
+## State Variables
+
+| Variable | Type | Description |
+|----------|------|-------------|
+| `dsfoToken` | IDSFO | DSFO NFT contract (authorization for `handleOwnershipChange`) |
+| `router` | IUniswapV2Router02 | DEX router for LP breakdown |
+| `factory` | IUniswapV2Factory | For permissionless LP validation |
+| `treasury` | address | Fallback recipient when no holders exist |
+| `triggerMinInterval` | uint256 | Minimum time between triggers (default 4 hours) |
+| `triggerBountyBps` | uint256 | Caller bounty as bps of output (default 100 = 1%) |
+| `triggerBountyCap` | uint256 | Absolute max bounty per token |
+| `triggerMinLPBalance` | uint256 | Min LP balance to process (dust filter) |
+| `totalTrackedShares` | uint256 | Sum of all holder balances (DSFO count) |
+| `accRewardPerShare` | mapping(address => uint256) | Cumulative reward per share per token |
+
+## Core Functions
+
+### `triggerBreakdownAndDistribution(uint256[] minAmounts0, uint256[] minAmounts1)`
+
+Permissionless. Breaks all registered LP tokens into underlying assets with slippage protection.
+
+**Process**:
+1. Validates minimum interval has passed
+2. If no holders: sends LP to treasury (fallback)
+3. For each registered LP token with sufficient balance:
+   - Calls `router.removeLiquidity()` with min amounts
+   - Deducts caller bounty from each output token
+   - Accumulates remaining into `accRewardPerShare`
+
+**Slippage arrays**: Must match `lpTokenAddresses` length. Pass 0 for tokens you want unprotected.
+
+### `triggerBreakdownAndDistribution()` (no args)
+
+Same as above but with 0 slippage protection (backwards-compatible overload).
+
+### `claimAllFees()`
+
+Claim all pending fees across all reward tokens. Settles accrued rewards, transfers each token with a non-zero balance.
+
+### `claimFees(address[] tokens)`
+
+Claim pending fees for specific tokens only.
+
+### `handleOwnershipChange(address from, address to, uint256 amount)`
+
+**Callable only by DSFO token contract.** Called on every mint/burn to update holder shares.
+
+For both `from` and `to` (when non-zero):
+1. Settle existing rewards into `pendingRewards`
+2. Adjust holder balance (increase/decrease)
+3. Update reward debt
+
+## LP Token Management
+
+### `addLPTokenAddress(address)` (onlyOwner)
+
+Register an LP token for breakdown. Only registered LPs are processed during trigger.
+
+### `registerLP(address)` (permissionless)
+
+Register an LP token after validating it's a real V2 pair from the Factory:
+
+```solidity
+require(factory.getPair(token0, token1) == lpToken, "Not a valid Factory pair");
+```
+
+### `removeLPTokenAddress(uint256 index)` (onlyOwner)
+
+Remove an LP token from the registry (swap-and-pop).
+
+## View Functions
+
+### `claimableAll(address holder) → (address[] tokens, uint256[] amounts)`
+
+Returns claimable amount for a holder across all reward tokens. Used by the frontend dashboard.
+
+### `claimable(address holder, address token) → uint256`
+
+Returns claimable amount for a specific holder + token pair.
+
+| Function | Returns | Description |
+|----------|---------|-------------|
+| `getHolderCount()` | uint256 | Number of tracked holders |
+| `getHolderAt(uint256)` | address | Holder at index |
+| `holderBalances(address)` | uint256 | DSFO balance of holder |
+| `getLPTokenCount()` | uint256 | Number of registered LP tokens |
+| `getRewardTokenCount()` | uint256 | Number of reward token types |
+| `getRewardTokenAt(uint256)` | address | Reward token at index |
+
+## Admin Functions (onlyOwner)
+
+| Function | Description |
+|----------|-------------|
+| `setDsfoToken(address)` | Update DSFO token reference |
+| `setRouter(address)` | Update router reference |
+| `setFactory(address)` | Update factory reference |
+| `setTreasury(address)` | Update treasury address |
+| `setTriggerConfig(minInterval, bountyCap, bountyBps, minLPBalance)` | Update trigger parameters (bounty max 5%) |
+| `syncHolder(address)` | Force-sync a holder's balance from DSFO token |
+| `syncHolders(address[])` | Batch sync |
+| `emergencyWithdraw(token, amount, to)` | Withdraw stuck tokens (blocked for active reward tokens) |
+| `removeRewardToken(uint256 index)` | Remove zero-balance reward token from array |
+
+## Events
+
+```solidity
+event FeesAccumulated(address indexed token, uint256 totalAmount, uint256 accRewardPerShareAfter);
+event FeesClaimed(address indexed holder, address indexed token, uint256 amount);
+event LPBrokenDown(address indexed lpToken, address indexed token0, address indexed token1, uint256 amountToken0, uint256 amountToken1);
+event HolderBalanceUpdated(address indexed holder, uint256 newBalance, uint256 totalShares);
+event LPTokenAdded(address indexed lpToken);
+event LPTokenRemoved(address indexed lpToken);
+event TriggerConfigUpdated(uint256 minInterval, uint256 bountyCap, uint256 bountyBps, uint256 minLPBalance);
+event TreasuryFallback(address indexed lpToken, uint256 lpBalance);
+```
